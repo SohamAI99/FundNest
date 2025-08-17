@@ -1,7 +1,7 @@
 // Environment configuration for different deployment stages
 const config = {
   development: {
-    API_BASE_URL: 'http://localhost:5000/api',
+    API_BASE_URL: 'http://localhost:5001/api',
     APP_URL: 'http://localhost:4028',
     ENABLE_LOGGING: true,
     ENABLE_REDUX_DEVTOOLS: true,
@@ -13,7 +13,7 @@ const config = {
   },
   
   staging: {
-    API_BASE_URL: 'https://api-staging.fundnest.com/api',
+    API_BASE_URL: import.meta.env?.VITE_API_URL || '/api',
     APP_URL: 'https://staging.fundnest.com',
     ENABLE_LOGGING: true,
     ENABLE_REDUX_DEVTOOLS: false,
@@ -25,7 +25,7 @@ const config = {
   },
   
   production: {
-    API_BASE_URL: 'https://api.fundnest.com/api',
+    API_BASE_URL: import.meta.env?.VITE_API_URL || '/api',
     APP_URL: 'https://fundnest.com',
     ENABLE_LOGGING: false,
     ENABLE_REDUX_DEVTOOLS: false,

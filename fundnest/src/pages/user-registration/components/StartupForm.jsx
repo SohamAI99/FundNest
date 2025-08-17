@@ -27,13 +27,13 @@ const StartupForm = ({ formData, onChange, errors }) => {
   ];
 
   const fundingAmountOptions = [
-    { value: '50k-100k', label: '₹41.5L - ₹83L' },
-    { value: '100k-250k', label: '₹83L - ₹2.07Cr' },
-    { value: '250k-500k', label: '₹2.07Cr - ₹4.15Cr' },
-    { value: '500k-1m', label: '₹4.15Cr - ₹8.3Cr' },
-    { value: '1m-5m', label: '₹8.3Cr - ₹41.5Cr' },
-    { value: '5m-10m', label: '₹41.5Cr - ₹83Cr' },
-    { value: '10m+', label: '₹83Cr+' }
+    { value: '50k-100k', label: '₹40L - ₹80L' },
+    { value: '100k-250k', label: '₹80L - ₹2Cr' },
+    { value: '250k-500k', label: '₹2Cr - ₹4Cr' },
+    { value: '500k-1m', label: '₹4Cr - ₹8Cr' },
+    { value: '1m-5m', label: '₹8Cr - ₹4Cr' },
+    { value: '5m-10m', label: '₹40r - ₹80Cr' },
+    { value: '10m+', label: '₹80Cr+' }
   ];
 
   return (

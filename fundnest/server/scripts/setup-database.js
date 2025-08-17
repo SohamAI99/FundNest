@@ -129,7 +129,7 @@ const setupDatabase = async () => {
     
     await dbRun('CREATE INDEX IF NOT EXISTS idx_matches_startup_id ON matches(startup_id)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_matches_investor_id ON matches(investor_id)');
-    await dbRun('CREATE INDEX IF NOT EXISTS idx_matches_score ON matches(compatibility_score)');
+    await dbRun('CREATE INDEX IF NOT EXISTS idx_matches_score ON matches(match_score)');
     await dbRun('CREATE INDEX IF NOT EXISTS idx_matches_created_at ON matches(created_at)');
     
     await dbRun('CREATE INDEX IF NOT EXISTS idx_newsletter_email ON newsletter_subscriptions(email)');
@@ -406,8 +406,8 @@ const insertSampleData = async () => {
     }
 
     // Create some sample matches
-    const startupIds = await dbAll('SELECT id FROM startups LIMIT 3');
-    const investorIds = await dbAll('SELECT id FROM investors LIMIT 3');
+      const startupIds = await dbGet('SELECT id FROM startups LIMIT 3');
+      const investorIds = await dbGet('SELECT id FROM investors LIMIT 3');
     
     if (startupIds.length > 0 && investorIds.length > 0) {
       await dbRun(`

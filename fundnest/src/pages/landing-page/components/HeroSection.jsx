@@ -14,9 +14,9 @@ const HeroSection = () => {
   });
 
   const [targetCounters, setTargetCounters] = useState({
-    startups: 2847,
-    investors: 1523,
-    matches: 892,
+    startups: 0,
+    investors: 0,
+    matches: 0,
     funding: 0 // Default fallback values
   });
 
