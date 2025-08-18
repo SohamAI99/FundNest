@@ -2,6 +2,7 @@ const express = require("express");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const { PrismaClient } = require("@prisma/client");
+const serverless = require("serverless-http");
 
 // Load environment variables first
 dotenv.config();
@@ -14,15 +15,15 @@ const statsRoutes = require("./routes/stats.js");
 
 const app = express();
 const prisma = new PrismaClient();
-const PORT = process.env.PORT || 5001;
 
 // ---------- Middlewares ----------
-app.use(cors());
+app.use(cors({
+  origin: process.env.CORS_ORIGINS?.split(","),
+  credentials: true,
+}));
 app.use(express.json());
 
 // ---------- Routes ----------
-
-// Root welcome endpoint
 app.get("/", (req, res) => {
   res.json({
     success: true,
@@ -32,17 +33,14 @@ app.get("/", (req, res) => {
   });
 });
 
-// Health check
 app.get("/health", (req, res) => {
   res.status(200).json({ status: "OK", uptime: process.uptime() });
 });
 
-// API base
 app.get("/api", (req, res) => {
   res.json({ message: "Welcome to FundNest API 🚀" });
 });
 
-// API sub-routes
 app.use("/api/auth", authRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/startups", startupRoutes);
@@ -70,32 +68,6 @@ app.use((err, req, res, next) => {
   });
 });
 
-// ---------- Start Server ----------
-async function startServer() {
-  try {
-    await prisma.$connect();
-    console.log("✅ Connected to database");
-
-    app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://localhost:${PORT}`);
-    });
-  } catch (err) {
-    console.error("❌ Failed to start server:", err);
-    process.exit(1);
-  }
-}
-
-startServer();
-
-// Graceful shutdown
-process.on("SIGINT", async () => {
-  console.log("🔴 Shutting down...");
-  await prisma.$disconnect();
-  process.exit(0);
-});
-
-process.on("SIGTERM", async () => {
-  console.log("🔴 Shutting down...");
-  await prisma.$disconnect();
-  process.exit(0);
-});
+// ✅ Export handler for Vercel
+module.exports = app;
+module.exports.handler = serverless(app);

@@ -2,23 +2,16 @@
   "version": 2,
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/static-build",
-      "config": { "distDir": "dist" }
+      "src": "api/server.js",
+      "use": "@vercel/node"
     },
     {
-      "src": "server/index.js",
-      "use": "@vercel/node"
+      "src": "src/**/*",
+      "use": "@vercel/static-build"
     }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "server/index.js" },
-    { "handle": "filesystem" },
-    { "src": "/.*", "dest": "/index.html" }
-  ],
-  "env": {
-    "NODE_ENV": "production",
-    "JWT_SECRET": "fundnest-production-jwt-secret-key-change-this-in-production",
-    "CORS_ORIGINS": "https://fundnest.vercel.app,https://fund-nest.vercel.app"
-  }
+    { "src": "/api/(.*)", "dest": "/api/server.js" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ]
 }
