@@ -1,106 +1,101 @@
-const express = require('express');
-const cors = require('cors');
-const helmet = require('helmet');
-require('dotenv').config();
+const express = require("express");
+const dotenv = require("dotenv");
+const cors = require("cors");
+const { PrismaClient } = require("@prisma/client");
+
+// Load environment variables first
+dotenv.config();
+
+const authRoutes = require("./routes/auth.js");
+const userRoutes = require("./routes/users.js");
+const startupRoutes = require("./routes/startups.js");
+const investorRoutes = require("./routes/investors.js");
+const statsRoutes = require("./routes/stats.js");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const prisma = new PrismaClient();
+const PORT = process.env.PORT || 5001;
 
-// Security middleware
-app.use(helmet({
-  contentSecurityPolicy: false, // Disable for development
-}));
+// ---------- Middlewares ----------
+app.use(cors());
+app.use(express.json());
 
-// CORS configuration
-const corsOptions = {
-  origin: process.env.CORS_ORIGINS ? process.env.CORS_ORIGINS.split(',') : [
-    'http://localhost:4028',
-    'http://localhost:3000',
-    'http://127.0.0.1:4028',
-    'https://fundnest.vercel.app',
-    'https://fund-nest.vercel.app'
-  ],
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With']
-};
+// ---------- Routes ----------
 
-app.use(cors(corsOptions));
-
-// Body parsing middleware
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
-
-// Basic health check endpoint
-app.get('/health', (req, res) => {
+// Root welcome endpoint
+app.get("/", (req, res) => {
   res.json({
     success: true,
-    message: 'FundNest API Server is running!',
-    timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV || 'development'
+    message: "Welcome to FundNest Backend 🚀",
+    docs: "/api",
+    health: "/health",
   });
 });
 
-// API Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/users', require('./routes/users'));
-app.use('/api/startups', require('./routes/startups'));
-app.use('/api/investors', require('./routes/investors'));
-app.use('/api/stats', require('./routes/stats'));
-
-// Database connection
-const { Pool } = require('pg');
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
+// Health check
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "OK", uptime: process.uptime() });
 });
 
-// Middleware for database connection
-app.use((req, res, next) => {
-  req.db = pool;
-  next();
+// API base
+app.get("/api", (req, res) => {
+  res.json({ message: "Welcome to FundNest API 🚀" });
 });
 
-// Welcome endpoint
-app.get('/api', (req, res) => {
-  res.json({
-    success: true,
-    message: 'Welcome to FundNest API!',
-    version: '1.0.0',
-    endpoints: {
-      auth: '/api/auth',
-      health: '/health'
-    }
-  });
-});
+// API sub-routes
+app.use("/api/auth", authRoutes);
+app.use("/api/users", userRoutes);
+app.use("/api/startups", startupRoutes);
+app.use("/api/investors", investorRoutes);
+app.use("/api/stats", statsRoutes);
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error('Error:', err);
-  res.status(500).json({
-    success: false,
-    message: 'Internal server error',
-    error: process.env.NODE_ENV === 'development' ? err.message : 'Something went wrong'
-  });
-});
-
-// 404 handler
-app.use('*', (req, res) => {
+// ---------- 404 Handler ----------
+app.use((req, res) => {
   res.status(404).json({
     success: false,
-    message: 'Endpoint not found',
-    path: req.originalUrl
+    message: "Endpoint not found",
+    path: req.originalUrl,
   });
 });
 
-// Start server only when not running in a serverless environment (like Vercel)
-if (!process.env.VERCEL) {
-  app.listen(PORT, () => {
-    console.log(`🚀 FundNest API Server running on port ${PORT}`);
-    console.log(`📍 Health check: http://localhost:${PORT}/health`);
-    console.log(`🔗 API Base: http://localhost:${PORT}/api`);
-    console.log(`🌍 Environment: ${process.env.NODE_ENV || 'development'}`);
+// ---------- Error Handler ----------
+app.use((err, req, res, next) => {
+  console.error("❌ Error:", err.stack);
+  res.status(500).json({
+    success: false,
+    message: process.env.NODE_ENV === "production"
+      ? "Internal server error"
+      : err.message,
+    stack: process.env.NODE_ENV === "production" ? undefined : err.stack,
   });
+});
+
+// ---------- Start Server ----------
+async function startServer() {
+  try {
+    await prisma.$connect();
+    console.log("✅ Connected to database");
+
+    app.listen(PORT, () => {
+      console.log(`🚀 Server running on http://localhost:${PORT}`);
+    });
+  } catch (err) {
+    console.error("❌ Failed to start server:", err);
+    process.exit(1);
+  }
 }
 
-module.exports = app;
+startServer();
+
+// Graceful shutdown
+process.on("SIGINT", async () => {
+  console.log("🔴 Shutting down...");
+  await prisma.$disconnect();
+  process.exit(0);
+});
+
+process.on("SIGTERM", async () => {
+  console.log("🔴 Shutting down...");
+  await prisma.$disconnect();
+  process.exit(0);
+});

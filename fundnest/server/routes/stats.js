@@ -1,16 +1,25 @@
 const express = require('express');
-const { memoryDb } = require('../config/database');
+const { PrismaClient } = require('@prisma/client');
 const { authenticateToken } = require('../middleware/auth');
 const router = express.Router();
+
+// Initialize Prisma client
+const prisma = new PrismaClient();
 
 // Get platform statistics
 router.get('/platform-stats', async (req, res) => {
   try {
+    const [totalUsers, totalStartups, totalInvestors] = await Promise.all([
+      prisma.user.count(),
+      prisma.startup.count(),
+      prisma.investor.count()
+    ]);
+
     const stats = {
-      totalUsers: memoryDb.users.length,
-      totalStartups: memoryDb.startups.length,
-      totalInvestors: memoryDb.investors.length,
-      totalMatches: memoryDb.matches.length,
+      totalUsers,
+      totalStartups,
+      totalInvestors,
+      totalMatches: 0, // Will be implemented later
       fundingRaised: '₹2.5Cr+',
       successfulDeals: 12,
       averageTicketSize: '₹25L'
@@ -33,7 +42,9 @@ router.get('/platform-stats', async (req, res) => {
 router.get('/dashboard-stats/:userId', authenticateToken, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
-    const user = memoryDb.users.find(u => u.id === userId);
+    const user = await prisma.user.findUnique({
+      where: { id: userId }
+    });
     
     if (!user) {
       return res.status(404).json({
@@ -45,7 +56,9 @@ router.get('/dashboard-stats/:userId', authenticateToken, async (req, res) => {
     let stats = {};
     
     if (user.role === 'startup') {
-      const startup = memoryDb.startups.find(s => s.user_id === userId);
+      const startup = await prisma.startup.findUnique({
+        where: { user_id: userId }
+      });
       stats = {
         profileViews: 245,
         interestedInvestors: 12,
@@ -55,7 +68,9 @@ router.get('/dashboard-stats/:userId', authenticateToken, async (req, res) => {
         currentStage: startup?.funding_stage || 'seed'
       };
     } else if (user.role === 'investor') {
-      const investor = memoryDb.investors.find(i => i.user_id === userId);
+      const investor = await prisma.investor.findUnique({
+        where: { user_id: userId }
+      });
       stats = {
         startupsViewed: 156,
         pitchesSent: 23,

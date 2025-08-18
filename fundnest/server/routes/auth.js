@@ -2,9 +2,12 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { dbGet, dbRun } = require('../config/database');
+const { PrismaClient } = require('@prisma/client');
 const { authenticateToken, createRateLimiter } = require('../middleware/auth');
 const router = express.Router();
+
+// Initialize Prisma client
+const prisma = new PrismaClient();
 
 // Rate limiting for auth endpoints
 const authRateLimit = createRateLimiter(15 * 60 * 1000, 5); // 5 requests per 15 minutes
@@ -32,7 +35,9 @@ router.post('/register', authRateLimit, async (req, res) => {
     }
 
     // Check if user already exists
-    const existingUser = await dbGet('SELECT * FROM users WHERE email = $1', [email]);
+    const existingUser = await prisma.user.findUnique({
+      where: { email }
+    });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -45,46 +50,55 @@ router.post('/register', authRateLimit, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Create user
-    const userResult = await dbRun(`
-      INSERT INTO users (email, password_hash, first_name, last_name, role) 
-      VALUES ($1, $2, $3, $4, $5) 
-      RETURNING id, email, first_name, last_name, role, created_at
-    `, [email, hashedPassword, firstName, lastName, role]);
-
-    const userId = userResult.rows[0].id;
-    const userData = userResult.rows[0];
+    const userData = await prisma.user.create({
+      data: {
+        email,
+        password_hash: hashedPassword,
+        first_name: firstName,
+        last_name: lastName,
+        role,
+        is_active: true,
+        created_at: new Date()
+      },
+      select: {
+        id: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        role: true,
+        created_at: true
+      }
+    });
 
     // Create role-specific profile
     if (role === 'startup') {
-      await dbRun(`
-        INSERT INTO startups (user_id, company_name, company_description, industry, funding_stage, funding_amount_range, funding_amount_min, funding_amount_max, founded_year, team_size) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-      `, [
-        userId,
-        additionalData.companyName || '',
-        additionalData.companyDescription || '',
-        additionalData.industry || 'technology',
-        additionalData.fundingStage || 'pre-seed',
-        additionalData.fundingAmount || '100k-500k',
-        830000, // Default min in paisa
-        4150000, // Default max in paisa
-        additionalData.foundedYear || new Date().getFullYear(),
-        5 // Default team size
-      ]);
+      await prisma.startup.create({
+        data: {
+          user_id: userData.id,
+          company_name: additionalData.companyName || '',
+          company_description: additionalData.companyDescription || '',
+          industry: additionalData.industry || 'technology',
+          funding_stage: additionalData.fundingStage || 'pre-seed',
+          funding_amount_range: additionalData.fundingAmount || '100k-500k',
+          funding_amount_min: 830000, // Default min in paisa
+          funding_amount_max: 4150000, // Default max in paisa
+          founded_year: additionalData.foundedYear || new Date().getFullYear(),
+          team_size: 5 // Default team size
+        }
+      });
     } else if (role === 'investor') {
-      await dbRun(`
-        INSERT INTO investors (user_id, investment_focus, check_size_range, check_size_min, check_size_max, experience_years, preferred_sectors, preferred_stages) 
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
-      `, [
-        userId,
-        additionalData.investmentFocus || 'angel',
-        additionalData.checkSize || '50k-250k',
-        415000, // Default min in paisa
-        2075000, // Default max in paisa
-        additionalData.experienceYears || 1,
-        JSON.stringify(additionalData.preferredSectors || ['technology']),
-        JSON.stringify(additionalData.preferredStages || ['seed'])
-      ]);
+      await prisma.investor.create({
+        data: {
+          user_id: userData.id,
+          investment_focus: additionalData.investmentFocus || 'angel',
+          check_size_range: additionalData.checkSize || '50k-250k',
+          check_size_min: 415000, // Default min in paisa
+          check_size_max: 2075000, // Default max in paisa
+          experience_years: additionalData.experienceYears || 1,
+          preferred_sectors: additionalData.preferredSectors || ['technology'],
+          preferred_stages: additionalData.preferredStages || ['seed']
+        }
+      });
     }
 
     // Generate JWT token
@@ -133,7 +147,9 @@ router.post('/login', loginRateLimit, async (req, res) => {
     }
 
     // Find user
-    const user = await dbGet('SELECT * FROM users WHERE email = $1', [email]);
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -203,7 +219,9 @@ router.post('/forgot-password', authRateLimit, async (req, res) => {
     }
 
     // Check if user exists
-    const user = await dbGet('SELECT * FROM users WHERE email = $1', [email]);
+    const user = await prisma.user.findUnique({
+      where: { email }
+    });
     if (!user) {
       // Don't reveal if user exists or not for security
       return res.json({
@@ -218,11 +236,13 @@ router.post('/forgot-password', authRateLimit, async (req, res) => {
     const resetTokenExpiry = new Date(Date.now() + 3600000); // 1 hour from now
 
     // Store reset token in database
-    await dbRun(`
-      UPDATE users 
-      SET reset_token = $1, reset_token_expiry = $2 
-      WHERE id = $3
-    `, [resetToken, resetTokenExpiry, user.id]);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        reset_token: resetToken,
+        reset_token_expiry: resetTokenExpiry
+      }
+    });
 
     // In a real application, you would send an email here
     console.log(`Password reset link: http://localhost:4028/reset-password?token=${resetToken}`);
@@ -256,10 +276,14 @@ router.post('/reset-password', authRateLimit, async (req, res) => {
     }
 
     // Find user with valid reset token
-    const user = await dbGet(`
-      SELECT * FROM users 
-      WHERE reset_token = $1 AND reset_token_expiry > NOW()
-    `, [token]);
+    const user = await prisma.user.findFirst({
+      where: {
+        reset_token: token,
+        reset_token_expiry: {
+          gt: new Date()
+        }
+      }
+    });
 
     if (!user) {
       return res.status(400).json({
@@ -273,11 +297,14 @@ router.post('/reset-password', authRateLimit, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, saltRounds);
 
     // Update password and clear reset token
-    await dbRun(`
-      UPDATE users 
-      SET password_hash = $1, reset_token = NULL, reset_token_expiry = NULL 
-      WHERE id = $2
-    `, [hashedPassword, user.id]);
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password_hash: hashedPassword,
+        reset_token: null,
+        reset_token_expiry: null
+      }
+    });
 
     res.json({
       success: true,
@@ -296,10 +323,16 @@ router.post('/reset-password', authRateLimit, async (req, res) => {
 // Verify token endpoint (for protected routes)
 router.get('/verify', authenticateToken, async (req, res) => {
   try {
-    const user = await dbGet(
-      'SELECT id, email, first_name, last_name, role FROM users WHERE id = $1', 
-      [req.user.id]
-    );
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        id: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        role: true
+      }
+    });
 
     if (!user) {
       return res.status(404).json({

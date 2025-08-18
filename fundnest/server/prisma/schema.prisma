@@ -1,0 +1,76 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  // Using default output to node_modules/@prisma/client
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// User model
+model User {
+  id            Int      @id @default(autoincrement())
+  email         String   @unique
+  password_hash String
+  first_name    String
+  last_name     String
+  role          String   // 'startup' or 'investor'
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+  
+  // Relations
+  startup       Startup?
+  investor      Investor?
+  
+  @@map("users")
+}
+
+// Startup model
+model Startup {
+  id                 Int      @id @default(autoincrement())
+  user_id            Int      @unique
+  company_name       String
+  company_description String?
+  industry           String
+  funding_stage      String
+  funding_amount_range String
+  funding_amount_min Int
+  funding_amount_max Int
+  founded_year       Int
+  team_size          Int
+  created_at         DateTime @default(now())
+  updated_at         DateTime @updatedAt
+  
+  // Relations
+  user               User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@map("startups")
+}
+
+// Investor model
+model Investor {
+  id                Int      @id @default(autoincrement())
+  user_id           Int      @unique
+  investment_focus  String
+  check_size_range  String
+  check_size_min    Int
+  check_size_max    Int
+  experience_years  Int
+  preferred_sectors Json     // JSON array of sectors
+  preferred_stages  Json     // JSON array of stages
+  created_at        DateTime @default(now())
+  updated_at        DateTime @updatedAt
+  
+  // Relations
+  user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@map("investors")
+}

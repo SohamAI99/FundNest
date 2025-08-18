@@ -1,0 +1,17 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "server.js" }
+  ],
+  "env": {
+    "NODE_ENV": "production",
+    "JWT_SECRET": "fundnest-backend-jwt-secret-key-change-this-in-production",
+    "CORS_ORIGINS": "https://fundnest.vercel.app,https://fund-nest.vercel.app"
+  }
+}
