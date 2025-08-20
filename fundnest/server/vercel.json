@@ -3,14 +3,14 @@
   "name": "fundnest-server",
   "builds": [
     {
-      "src": "server.js",
+      "src": "simple-server.js",
       "use": "@vercel/node"
     }
   ],
   "routes": [
     {
       "src": "/api/(.*)",
-      "dest": "server.js"
+      "dest": "simple-server.js"
     }
   ],
   "env": {
