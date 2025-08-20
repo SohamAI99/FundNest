@@ -34,6 +34,9 @@ const AppHeader = ({ notifications = 0, onNavigate }) => {
     // Home button removed as requested
   ];
 
+  // Only show navigation items if not on home page
+  const shouldShowNavigation = currentPath !== '/' && isAuthenticated;
+
   const handleNavigation = (path) => {
     navigate(path);
     setIsMobileMenuOpen(false);
@@ -143,7 +146,7 @@ const AppHeader = ({ notifications = 0, onNavigate }) => {
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-1">
-            {isAuthenticated ? (
+            {shouldShowNavigation ? (
               <>
                 {navigationItems?.filter(item => !item?.roles || item?.roles?.includes(user?.role))?.map((item) => (
                     <NavItem key={item?.path} item={item} />
@@ -192,7 +195,7 @@ const AppHeader = ({ notifications = 0, onNavigate }) => {
             className="fixed top-16 left-0 right-0 bg-card border-b border-border shadow-elevation-3 animate-slideIn"
           >
             <div className="px-6 py-4 space-y-2">
-              {isAuthenticated ? (
+              {shouldShowNavigation ? (
                 <>
                   {navigationItems?.filter(item => !item?.roles || item?.roles?.includes(user?.role))?.map((item) => (
                       <NavItem key={item?.path} item={item} isMobile />

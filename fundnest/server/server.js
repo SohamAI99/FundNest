@@ -18,7 +18,7 @@ const prisma = new PrismaClient();
 
 // ---------- Middlewares ----------
 app.use(cors({
-  origin: process.env.CORS_ORIGINS?.split(","),
+  origin: process.env.CORS_ORIGINS?.split(",") || ["https://fundnest.vercel.app"],
   credentials: true,
 }));
 app.use(express.json());
@@ -69,5 +69,14 @@ app.use((err, req, res, next) => {
 });
 
 // ✅ Export handler for Vercel
-module.exports = app;
-module.exports.handler = serverless(app);
+if (process.env.NODE_ENV === 'production') {
+  module.exports = app;
+  module.exports.handler = serverless(app);
+} else {
+  // For local development
+  const PORT = process.env.PORT || 5001;
+  app.listen(PORT, () => {
+    console.log(`🚀 Server running on port ${PORT}`);
+  });
+  module.exports = app;
+}

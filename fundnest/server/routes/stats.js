@@ -9,25 +9,17 @@ const prisma = new PrismaClient();
 // Get platform statistics
 router.get('/platform-stats', async (req, res) => {
   try {
-    const [totalUsers, totalStartups, totalInvestors] = await Promise.all([
-      prisma.user.count(),
-      prisma.startup.count(),
-      prisma.investor.count()
-    ]);
-
+    // Return zero values as requested
     const stats = {
-      totalUsers,
-      totalStartups,
-      totalInvestors,
-      totalMatches: 0, // Will be implemented later
-      fundingRaised: '₹2.5Cr+',
-      successfulDeals: 12,
-      averageTicketSize: '₹25L'
+      startups: 0,
+      investors: 0,
+      matches: 0,
+      funding: 0
     };
 
     res.json({
       success: true,
-      stats
+      data: stats
     });
   } catch (error) {
     console.error('Get platform stats error:', error);

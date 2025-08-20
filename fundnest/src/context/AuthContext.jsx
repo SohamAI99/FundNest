@@ -70,13 +70,48 @@ export const AuthProvider = ({ children }) => {
         
         return { success: true, user: userWithName, redirectTo: getDashboardRoute(userWithName) };
       } else {
-        return { success: false, message: response.message };
+        return { success: false, message: response.message || 'Invalid email or password' };
       }
     } catch (error) {
       console.error('Login error:', error);
+      
+      // Handle different error scenarios with specific messages
+      if (!error.response) {
+        // Network error - no response from server
+        return { 
+          success: false, 
+          message: 'Unable to connect to the server. Please check your internet connection and try again.'
+        };
+      }
+      
+      if (error.response?.status === 401) {
+        // Unauthorized - invalid credentials
+        return { 
+          success: false, 
+          message: 'Invalid email or password. Please check your credentials and try again.'
+        };
+      }
+      
+      if (error.response?.status === 400) {
+        // Bad request - validation error
+        return { 
+          success: false, 
+          message: error.response?.data?.message || 'Invalid request. Please check your input and try again.'
+        };
+      }
+      
+      if (error.response?.status === 429) {
+        // Too many requests - rate limited
+        return { 
+          success: false, 
+          message: 'Too many login attempts. Please wait a few minutes and try again.'
+        };
+      }
+      
+      // Default error message
       return { 
         success: false, 
-        message: error.response?.data?.message || 'Login failed'
+        message: 'An unexpected error occurred. Please try again later.'
       };
     }
   };

@@ -1,104 +1,99 @@
 const jwt = require('jsonwebtoken');
-require('dotenv').config();
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
-// Simple rate limiting store
-const rateLimitStore = new Map();
-
-// Create rate limiter
+// Create rate limiting middleware
 const createRateLimiter = (windowMs, maxRequests) => {
+  const requests = new Map();
+  
   return (req, res, next) => {
-    const key = req.ip || req.connection.remoteAddress;
     const now = Date.now();
     const windowStart = now - windowMs;
     
-    if (!rateLimitStore.has(key)) {
-      rateLimitStore.set(key, []);
+    // Clean old requests
+    for (const [ip, timestamps] of requests) {
+      requests.set(ip, timestamps.filter(time => time > windowStart));
     }
     
-    const requests = rateLimitStore.get(key);
+    const clientIP = req.ip || req.connection.remoteAddress || req.socket.remoteAddress;
+    const clientRequests = requests.get(clientIP) || [];
     
-    // Remove old requests outside the window
-    const validRequests = requests.filter(timestamp => timestamp > windowStart);
-    
-    if (validRequests.length >= maxRequests) {
+    if (clientRequests.length >= maxRequests) {
       return res.status(429).json({
         success: false,
-        message: 'Too many requests, please try again later',
-        retryAfter: Math.ceil(windowMs / 1000)
+        message: 'Too many requests. Please try again later.'
       });
     }
     
-    validRequests.push(now);
-    rateLimitStore.set(key, validRequests);
-    
+    clientRequests.push(now);
+    requests.set(clientIP, clientRequests);
     next();
   };
 };
 
-// JWT Authentication middleware
-const authenticateToken = (req, res, next) => {
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
-  
-  if (!token) {
-    return res.status(401).json({
-      success: false,
-      message: 'Access token required'
-    });
-  }
-  
+// JWT authentication middleware
+const authenticateToken = async (req, res, next) => {
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || 'fallback-secret-key');
-    req.user = decoded;
-    next();
-  } catch (error) {
-    console.error('Token verification error:', error);
-    return res.status(403).json({
-      success: false,
-      message: 'Invalid or expired token'
-    });
-  }
-};
-
-// Role-based access control
-const requireRole = (roles) => {
-  return (req, res, next) => {
-    if (!req.user) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1]; // Bearer TOKEN
+    
+    if (!token) {
       return res.status(401).json({
         success: false,
-        message: 'Authentication required'
+        message: 'Access token required'
       });
     }
     
-    if (!roles.includes(req.user.role)) {
-      return res.status(403).json({
+    // Verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    
+    // Get user from database
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        first_name: true,
+        last_name: true,
+        role: true,
+        is_active: true
+      }
+    });
+    
+    if (!user || !user.is_active) {
+      return res.status(401).json({
         success: false,
-        message: 'Insufficient permissions'
+        message: 'Invalid or inactive user'
       });
     }
     
+    // Add user to request object
+    req.user = user;
     next();
-  };
-};
-
-// Input validation middleware
-const validateInput = (schema) => {
-  return (req, res, next) => {
-    const { error } = schema.validate(req.body);
-    if (error) {
-      return res.status(400).json({
+  } catch (error) {
+    if (error.name === 'JsonWebTokenError') {
+      return res.status(401).json({
         success: false,
-        message: 'Validation error',
-        details: error.details.map(detail => detail.message)
+        message: 'Invalid token'
       });
     }
-    next();
-  };
+    
+    if (error.name === 'TokenExpiredError') {
+      return res.status(401).json({
+        success: false,
+        message: 'Token expired'
+      });
+    }
+    
+    console.error('Auth middleware error:', error);
+    return res.status(500).json({
+      success: false,
+      message: 'Authentication error'
+    });
+  }
 };
 
 module.exports = {
-  createRateLimiter,
   authenticateToken,
-  requireRole,
-  validateInput
+  createRateLimiter
 };

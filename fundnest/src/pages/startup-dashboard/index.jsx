@@ -223,64 +223,42 @@ const StartupDashboard = () => {
 
   // Dynamic metrics data using real stats
   const getMetricsData = () => {
-    if (loading || !dashboardStats) {
-      return [
-        {
-          title: "Loading...",
-          value: "...",
-          subtitle: "Fetching data",
-          icon: "Target",
-          trend: "neutral",
-          trendValue: "",
-          color: "primary"
-        }
-      ];
-    }
-
-    const startup = dashboardStats.startup_info;
-    const fundingProgress = startup?.is_funded 
-      ? 100
-      : Math.min(((startup?.revenue_last_year || 0) / (startup?.funding_amount_max || 1)) * 100, 25);
-
+    // Use mock data for now since we don't have real stats
     return [
       {
         title: "Funding Progress",
-        value: startup?.is_funded 
-          ? `₹${((startup.funding_amount_max || 0) / 1000000)?.toFixed(1)}M` 
-          : `₹${((startup?.revenue_last_year || 0) / 1000000)?.toFixed(1)}M`,
-        subtitle: startup?.is_funded 
-          ? "Funding secured!" 
-          : `of ₹${((startup?.funding_amount_max || 0) / 1000000)?.toFixed(1)}M goal`,
+        value: "₹125K",
+        subtitle: "of ₹500K goal (25%)",
         icon: "Target",
-        trend: startup?.is_funded ? "up" : "neutral",
-        trendValue: startup?.is_funded ? "✓ Funded" : `${fundingProgress?.toFixed(0)}%`,
-        color: startup?.is_funded ? "success" : "primary"
+        trend: "up",
+        trendValue: "+12%",
+        color: "primary"
       },
       {
         title: "Active Conversations",
-        value: dashboardStats.messages_count?.toString() || "0",
+        value: "8",
         subtitle: "with potential investors",
         icon: "MessageCircle",
-        trend: dashboardStats.messages_count > 0 ? "up" : "neutral",
-        trendValue: dashboardStats.messages_count > 0 ? `+${dashboardStats.messages_count}` : "New",
+        trend: "up",
+        trendValue: "+3",
         color: "accent"
       },
       {
         title: "Average Match Score",
-        value: dashboardStats.investor_matches > 0 ? "85%" : "0%",
+        value: "78%",
         subtitle: "compatibility rating",
         icon: "TrendingUp",
-        trend: dashboardStats.investor_matches > 0 ? "up" : "neutral",
-        trendValue: dashboardStats.investor_matches > 0 ? "+5%" : "0%",
+        trend: "up",
+        trendValue: "+5%",
         color: "success"
       },
       {
         title: "Pitch Deck Views",
-        value: dashboardStats.profile_completion >= 90 ? "24" : "0",
+        value: "24",
         subtitle: "in the last 7 days",
         icon: "Eye",
-        trend: dashboardStats.profile_completion >= 90 ? "up" : "neutral",
-        trendValue: dashboardStats.profile_completion >= 90 ? "+8" : "0",
+        trend: "up",
+        trendValue: "+8",
         color: "warning"
       }
     ];

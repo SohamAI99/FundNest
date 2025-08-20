@@ -1,25 +1,38 @@
 {
   "name": "fundnest-server",
   "version": "1.0.0",
-  "description": "FundNest Backend API Server",
+  "description": "FundNest Backend Server",
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js",
-    "setup:database": "node scripts/setup-database.js",
-    "prisma:generate": "prisma generate"
+    "dev": "nodemon server.js",
+    "build": "echo 'No build step required'",
+    "test": "echo 'No tests configured yet'"
   },
   "dependencies": {
-    "@prisma/client": "^6.14.0",
+    "@prisma/client": "^5.6.0",
     "bcryptjs": "^3.0.2",
     "cors": "^2.8.5",
-    "crypto": "^1.0.1",
-    "dotenv": "^17.2.1",
-    "express": "^4.21.2",
-    "helmet": "^7.2.0",
+    "dotenv": "^16.3.1",
+    "express": "^4.18.2",
     "jsonwebtoken": "^9.0.2",
-    "pg": "^8.16.3",
-    "prisma": "^6.14.0",
+    "pg": "^8.11.3",
     "serverless-http": "^3.2.0"
-  }
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "prisma": "^5.6.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "fundnest",
+    "startup",
+    "investor",
+    "api",
+    "vercel"
+  ],
+  "author": "FundNest Team",
+  "license": "MIT"
 }

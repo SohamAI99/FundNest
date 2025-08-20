@@ -1,5 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import Icon from '../AppIcon';
 import Image from '../AppImage';
 import NotificationBadge from './NotificationBadge';
@@ -8,6 +9,7 @@ const UserDropdown = ({ user, notifications = 0 }) => {
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef(null);
   const navigate = useNavigate();
+  const { logout } = useAuth();
 
   const toggleDropdown = () => {
     setIsOpen(!isOpen);
@@ -27,9 +29,7 @@ const UserDropdown = ({ user, notifications = 0 }) => {
         navigate('/subscription-management');
         break;
       case 'logout':
-        // Clear authentication data
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
+        logout();
         navigate('/landing-page');
         break;
       default:

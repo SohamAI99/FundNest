@@ -17,7 +17,7 @@ const HeroSection = () => {
     startups: 0,
     investors: 0,
     matches: 0,
-    funding: 0 // Default fallback values
+    funding: 0 // ₹12.8Cr
   });
 
   const [isLoading, setIsLoading] = useState(true);
@@ -26,23 +26,25 @@ const HeroSection = () => {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('http://localhost:5000/api/stats/platform-stats');
+        // Use environment-configured API endpoint
+        const API_BASE_URL = import.meta.env?.VITE_API_URL || 'http://localhost:5001/api';
+        const response = await fetch(`${API_BASE_URL}/stats/platform-stats`);
         if (response.ok) {
           const data = await response.json();
           if (data.success) {
             // If we have real data, use it, otherwise keep fallback values
             const realStats = data.data;
             const updatedTargets = {
-              startups: Math.max(realStats.startups, 50), // Ensure minimum for demo
-              investors: Math.max(realStats.investors, 25),
-              matches: Math.max(realStats.matches, 10),
-              funding: Math.max(realStats.funding, 127500000) // Fallback amount
+              startups: Math.max(realStats.startups || 50, 50), // Ensure minimum for demo
+              investors: Math.max(realStats.investors || 25, 25),
+              matches: Math.max(realStats.matches || 10, 10),
+              funding: Math.max(realStats.funding || 127500000, 127500000) // Fallback amount
             };
             setTargetCounters(updatedTargets);
           }
         }
       } catch (error) {
-        console.log('Using fallback stats data');
+        console.log('Using fallback stats data:', error.message);
         // Keep the existing fallback values
       } finally {
         setIsLoading(false);
