@@ -75,7 +75,6 @@ FundNest is a full-stack web platform that connects **startups** and **investors
    ```bash
    git clone https://github.com/SohamAI99/FundNest.git
    cd FundNest
-````
 
 2. **Backend setup**
 
