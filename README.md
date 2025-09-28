@@ -221,5 +221,4 @@ Please report issues / feature requests via the GitHub Issues tab.
 
 ```
 
-::contentReference[oaicite:0]{index=0}
-```
+
