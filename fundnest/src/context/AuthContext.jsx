@@ -32,6 +32,10 @@ export const AuthProvider = ({ children }) => {
         if (!userObj.name && userObj.firstName && userObj.lastName) {
           userObj.name = `${userObj.firstName} ${userObj.lastName}`;
         }
+        // Aliasing plan to tier for frontend compatibility
+        if (userObj.subscriptionPlan && !userObj.subscriptionTier) {
+          userObj.subscriptionTier = userObj.subscriptionPlan;
+        }
         setUser(userObj);
         setIsAuthenticated(true);
       } else {
@@ -54,10 +58,11 @@ export const AuthProvider = ({ children }) => {
       if (response.success) {
         const { token, user: userData } = response;
         
-        // Add computed name field for easier usage
+        // Add computed name and subscriptionTier fields for easier usage
         const userWithName = {
           ...userData,
-          name: `${userData.firstName} ${userData.lastName}`
+          name: `${userData.firstName} ${userData.lastName}`,
+          subscriptionTier: userData.subscriptionPlan || 'free'
         };
         
         // Store in localStorage
@@ -123,10 +128,11 @@ export const AuthProvider = ({ children }) => {
       if (response.success) {
         const { token, user: newUser } = response;
         
-        // Add computed name field for easier usage
+        // Add computed name and subscriptionTier fields for easier usage
         const userWithName = {
           ...newUser,
-          name: `${newUser.firstName} ${newUser.lastName}`
+          name: `${newUser.firstName} ${newUser.lastName}`,
+          subscriptionTier: newUser.subscriptionPlan || 'free'
         };
         
         // Store in localStorage
@@ -181,6 +187,9 @@ export const AuthProvider = ({ children }) => {
 
   const updateUser = (userData) => {
     const updatedUser = { ...user, ...userData };
+    if (updatedUser.subscriptionPlan) {
+      updatedUser.subscriptionTier = updatedUser.subscriptionPlan;
+    }
     setUser(updatedUser);
     localStorage.setItem('user', JSON.stringify(updatedUser));
   };

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { statsAPI, investorAPI } from '../../utils/api';
+import { statsAPI, investorAPI, startupAPI } from '../../utils/api';
 import AppHeader from '../../components/ui/AppHeader';
 import FilterPanel from './components/FilterPanel';
 import MetricsBar from './components/MetricsBar';
@@ -11,6 +11,129 @@ import PitchModal from './components/PitchModal';
 import Icon from '../../components/AppIcon';
 import Button from '../../components/ui/Button';
 import Select from '../../components/ui/Select';
+
+const REAL_WORLD_STARTUPS = [
+  {
+    id: 'startup_rw1',
+    name: 'Razorpay',
+    logo: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=100&h=100&fit=crop',
+    description: 'Razorpay is India’s leading full-stack financial services provider, offering payments, banking, and credit solutions for businesses of all sizes.',
+    sector: 'FinTech',
+    stage: 'growth',
+    location: 'Bengaluru, India',
+    fundingTarget: 15000000,
+    valuation: 7500000000,
+    fundingProgress: 98,
+    matchScore: 96,
+    isVerified: true,
+    isBookmarked: false,
+    monthlyRevenue: 12000000,
+    teamSize: 2200,
+    riskLevel: 'low',
+    aiThesis: 'Razorpay has established a commanding 60%+ market share in India’s payment gateway market. Strong growth, clear path to IPO, and excellent capital efficiency.',
+    viewCount: 142
+  },
+  {
+    id: 'startup_rw2',
+    name: 'CRED',
+    logo: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=100&h=100&fit=crop',
+    description: 'CRED is a high-trust community of credit-worthy individuals, offering rewards, financial services, and premium commerce options to credit card users.',
+    sector: 'FinTech',
+    stage: 'growth',
+    location: 'Bengaluru, India',
+    fundingTarget: 8000000,
+    valuation: 6400000000,
+    fundingProgress: 88,
+    matchScore: 92,
+    isVerified: true,
+    isBookmarked: true,
+    monthlyRevenue: 4500000,
+    teamSize: 800,
+    riskLevel: 'medium',
+    aiThesis: 'Highly engaged premium consumer base. CRED is expanding monetization via CRED Cash, CRED Pay, and premium travel/lifestyle products, raising average revenue per user.',
+    viewCount: 98
+  },
+  {
+    id: 'startup_rw3',
+    name: 'Meesho',
+    logo: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=100&h=100&fit=crop',
+    description: 'Meesho is India’s largest social e-commerce platform, enabling small businesses and individuals to start online stores with zero capital via WhatsApp/Facebook.',
+    sector: 'E-commerce',
+    stage: 'growth',
+    location: 'Bengaluru, India',
+    fundingTarget: 12000000,
+    valuation: 4900000000,
+    fundingProgress: 92,
+    matchScore: 89,
+    isVerified: true,
+    isBookmarked: false,
+    monthlyRevenue: 18000000,
+    teamSize: 1500,
+    riskLevel: 'low',
+    aiThesis: 'Superb traction in tier-2 and tier-3 towns. Meesho has optimized logistics and eliminated commissions, leading to a massive active transacting user count.',
+    viewCount: 120
+  },
+  {
+    id: 'startup_rw4',
+    name: 'Zepto',
+    logo: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=100&h=100&fit=crop',
+    description: 'Zepto is a 10-minute grocery delivery service that is transforming retail in India through dark stores, highly optimized supply chains, and fast delivery.',
+    sector: 'Q-Commerce',
+    stage: 'series-e',
+    location: 'Mumbai, India',
+    fundingTarget: 5000000,
+    valuation: 3600000000,
+    fundingProgress: 85,
+    matchScore: 87,
+    isVerified: true,
+    isBookmarked: false,
+    monthlyRevenue: 8000000,
+    teamSize: 1100,
+    riskLevel: 'medium',
+    aiThesis: 'Quick commerce is expanding rapidly. Zepto demonstrates impressive dark-store level EBITDA profitability and high retention rates, outperforming traditional grocery apps.',
+    viewCount: 115
+  },
+  {
+    id: 'startup_rw5',
+    name: 'PhysicsWallah',
+    logo: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=100&h=100&fit=crop',
+    description: 'PhysicsWallah is an educational platform offering affordable, high-quality coaching for JEE, NEET, and school board exams via online and offline learning hubs.',
+    sector: 'EdTech',
+    stage: 'series-b',
+    location: 'Noida, India',
+    fundingTarget: 2500000,
+    valuation: 1100000000,
+    fundingProgress: 60,
+    matchScore: 83,
+    isVerified: true,
+    isBookmarked: true,
+    monthlyRevenue: 3500000,
+    teamSize: 3500,
+    riskLevel: 'low',
+    aiThesis: 'One of the few highly profitable EdTech giants in India. Deep community loyalty and successful offline (Vidyapeeth) expansion make it highly resilient.',
+    viewCount: 88
+  },
+  {
+    id: 'startup_rw6',
+    name: 'Ola Electric',
+    logo: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=100&h=100&fit=crop',
+    description: 'Ola Electric is a leading electric vehicle manufacturer building India’s largest EV ecosystem, including state-of-the-art gigafactories and two-wheeler products.',
+    sector: 'CleanTech',
+    stage: 'growth',
+    location: 'Bengaluru, India',
+    fundingTarget: 20000000,
+    valuation: 4200000000,
+    fundingProgress: 95,
+    matchScore: 80,
+    isVerified: true,
+    isBookmarked: false,
+    monthlyRevenue: 9500000,
+    teamSize: 4000,
+    riskLevel: 'medium',
+    aiThesis: 'Market leader in Indian electric two-wheelers. Backed by government PLI schemes and a massive vertically integrated factory, creating strong long-term barriers.',
+    viewCount: 104
+  }
+];
 
 const InvestorDashboard = () => {
   const navigate = useNavigate();
@@ -92,129 +215,48 @@ const InvestorDashboard = () => {
     };
   };
 
-  // Mock startup data
-  const mockStartups = [
-    {
-      id: 'startup_001',
-      name: 'FinanceFlow',
-      logo: 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=100&h=100&fit=crop',
-      description: 'AI-powered financial management platform for small businesses. Automated bookkeeping, cash flow forecasting, and intelligent insights to help SMBs make better financial decisions.',
-      sector: 'FinTech',
-      stage: 'series-a',
-      location: 'San Francisco, CA',
-      fundingTarget: 2000000,
-      valuation: 12000000,
-      fundingProgress: 65,
-      matchScore: 92,
-      isVerified: true,
-      isBookmarked: false,
-      monthlyRevenue: 180000,
-      teamSize: 12,
-      riskLevel: 'low',
-      aiThesis: 'Strong product-market fit with proven traction in the SMB segment. Experienced team with previous exits. Growing market with clear monetization strategy.',
-      viewCount: 47
-    },
-    {
-      id: 'startup_002',
-      name: 'HealthTech Solutions',
-      logo: 'https://images.unsplash.com/photo-1559757148-5c350d0d3c56?w=100&h=100&fit=crop',
-      description: 'Telemedicine platform connecting patients with healthcare providers through secure video consultations and AI-powered symptom assessment.',
-      sector: 'HealthTech',
-      stage: 'seed',
-      location: 'Austin, TX',
-      fundingTarget: 1500000,
-      valuation: 8000000,
-      fundingProgress: 40,
-      matchScore: 87,
-      isVerified: true,
-      isBookmarked: true,
-      monthlyRevenue: 85000,
-      teamSize: 8,
-      riskLevel: 'medium',
-      aiThesis: 'Addressing critical healthcare accessibility issues with proven technology. Strong regulatory compliance and growing user base.',
-      viewCount: 32
-    },
-    {
-      id: 'startup_003',
-      name: 'EduLearn AI',
-      logo: 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=100&h=100&fit=crop',
-      description: 'Personalized learning platform using AI to adapt educational content to individual student needs and learning styles.',
-      sector: 'EdTech',
-      stage: 'pre-seed',
-      location: 'Boston, MA',
-      fundingTarget: 800000,
-      valuation: 4000000,
-      fundingProgress: 25,
-      matchScore: 78,
-      isVerified: false,
-      isBookmarked: false,
-      monthlyRevenue: 0,
-      teamSize: 5,
-      riskLevel: 'high',
-      aiThesis: 'Innovative approach to personalized education with strong technical team. Early stage with significant market potential.',
-      viewCount: 18
-    },
-    {
-      id: 'startup_004',
-      name: 'GreenEnergy Pro',
-      logo: 'https://images.unsplash.com/photo-1473341304170-971dccb5ac1e?w=100&h=100&fit=crop',
-      description: 'Smart energy management system for commercial buildings, reducing energy consumption by up to 30% through IoT sensors and AI optimization.',
-      sector: 'CleanTech',
-      stage: 'series-a',
-      location: 'Seattle, WA',
-      fundingTarget: 3000000,
-      valuation: 15000000,
-      fundingProgress: 80,
-      matchScore: 85,
-      isVerified: true,
-      isBookmarked: false,
-      monthlyRevenue: 220000,
-      teamSize: 15,
-      riskLevel: 'low',
-      aiThesis: 'Proven technology with strong customer traction in commercial real estate. ESG-focused investment with clear ROI.',
-      viewCount: 63
-    },
-    {
-      id: 'startup_005',
-      name: 'FoodTech Innovations',
-      logo: 'https://images.unsplash.com/photo-1565299624946-b28f40a0ca4b?w=100&h=100&fit=crop',
-      description: 'Plant-based protein production using precision fermentation technology. Sustainable alternative to traditional meat production.',
-      sector: 'FoodTech',
-      stage: 'seed',
-      location: 'Denver, CO',
-      fundingTarget: 2500000,
-      valuation: 10000000,
-      fundingProgress: 55,
-      matchScore: 73,
-      isVerified: true,
-      isBookmarked: true,
-      monthlyRevenue: 45000,
-      teamSize: 10,
-      riskLevel: 'medium',
-      aiThesis: 'Addressing growing demand for sustainable protein sources. Strong IP portfolio and experienced food industry team.',
-      viewCount: 29
-    },
-    {
-      id: 'startup_006',
-      name: 'CyberShield Security',
-      logo: 'https://images.unsplash.com/photo-1563013544-824ae1b704d3?w=100&h=100&fit=crop',
-      description: 'AI-powered cybersecurity platform providing real-time threat detection and automated response for enterprise networks.',
-      sector: 'CyberSecurity',
-      stage: 'series-b',
-      location: 'New York, NY',
-      fundingTarget: 5000000,
-      valuation: 25000000,
-      fundingProgress: 90,
-      matchScore: 94,
-      isVerified: true,
-      isBookmarked: false,
-      monthlyRevenue: 450000,
-      teamSize: 25,
-      riskLevel: 'low',
-      aiThesis: 'Market-leading cybersecurity solution with enterprise customers. Strong recurring revenue and expansion opportunities.',
-      viewCount: 89
-    }
-  ];
+  const [allStartups, setAllStartups] = useState([]);
+  const [startupsLoading, setStartupsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchStartups = async () => {
+      try {
+        setStartupsLoading(true);
+        const response = await startupAPI.getAll();
+        let dbStartups = [];
+        if (response && response.success && Array.isArray(response.startups)) {
+          dbStartups = response.startups.map(st => ({
+            id: `db_${st.id}`,
+            name: st.company_name,
+            logo: st.pitch_deck_url || 'https://images.unsplash.com/photo-1611224923853-80b023f02d71?w=100&h=100&fit=crop',
+            description: st.company_description,
+            sector: st.industry?.charAt(0)?.toUpperCase() + st.industry?.slice(1),
+            stage: st.funding_stage || 'seed',
+            location: 'Bengaluru, India',
+            fundingTarget: st.funding_amount_max || 1000000,
+            valuation: (st.funding_amount_max || 1000000) * 5,
+            fundingProgress: Math.floor(Math.random() * 40) + 10,
+            matchScore: 80 + Math.floor(Math.random() * 19),
+            isVerified: true,
+            isBookmarked: false,
+            monthlyRevenue: 25000,
+            teamSize: st.team_size || 5,
+            riskLevel: 'low',
+            aiThesis: `Strong technological foundation focusing on ${st.industry}. The team is targeting a sensible valuation step for their ${st.funding_stage} stage.`,
+            viewCount: 15
+          }));
+        }
+        setAllStartups([...dbStartups, ...REAL_WORLD_STARTUPS]);
+      } catch (error) {
+        console.error('Failed to fetch startups:', error);
+        setAllStartups(REAL_WORLD_STARTUPS);
+      } finally {
+        setStartupsLoading(false);
+      }
+    };
+
+    fetchStartups();
+  }, []);
 
   // Mock activity data
   const recentActivities = [
@@ -334,7 +376,7 @@ const InvestorDashboard = () => {
   };
 
   const handleViewPitch = (startupId) => {
-    const startup = mockStartups?.find(s => s?.id === startupId);
+    const startup = allStartups?.find(s => s?.id === startupId);
     setSelectedStartup(startup);
     setShowPitchModal(true);
   };
@@ -359,7 +401,7 @@ const InvestorDashboard = () => {
   };
 
   const getFilteredStartups = () => {
-    let filtered = [...mockStartups];
+    let filtered = [...allStartups];
 
     // Apply filters
     if (filters?.sectors?.length > 0) {
