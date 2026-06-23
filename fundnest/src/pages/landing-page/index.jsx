@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from "react-helmet-async"; 
+import { AnimatePresence } from 'framer-motion';
 import analytics from '../../utils/analytics';
 import AppHeader from '../../components/ui/AppHeader';
 import HeroSection from './components/HeroSection';
@@ -11,9 +12,14 @@ import TestimonialsSection from './components/TestimonialsSection';
 import NewsletterSection from './components/NewsletterSection';
 import DemoVideoModal from './components/DemoVideoModal';
 import Footer from './components/Footer';
+import IntroAnimation from './components/IntroAnimation';
 
 const LandingPage = () => {
   const [isDemoModalOpen, setIsDemoModalOpen] = useState(false);
+  const [showIntro, setShowIntro] = useState(() => {
+    // Show intro only if visited_intro is not set in sessionStorage
+    return !sessionStorage.getItem('visited_intro');
+  });
 
   useEffect(() => {
     analytics.trackPageView('/', 'FundNest - Home');
@@ -25,11 +31,33 @@ const LandingPage = () => {
     });
   }, []);
 
+  useEffect(() => {
+    // Lock body scrolling while intro is active
+    if (showIntro) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [showIntro]);
+
+  const handleIntroComplete = () => {
+    sessionStorage.setItem('visited_intro', 'true');
+    setShowIntro(false);
+  };
+
   const handleOpenDemoModal = () => setIsDemoModalOpen(true);
   const handleCloseDemoModal = () => setIsDemoModalOpen(false);
 
   return (
     <>
+      <AnimatePresence mode="wait">
+        {showIntro && (
+          <IntroAnimation key="intro" onComplete={handleIntroComplete} />
+        )}
+      </AnimatePresence>
       <Helmet>
         <title>FundNest — Where Startups Meet Smart Capital | AI-Powered Funding Platform</title>
         <meta 
