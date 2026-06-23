@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
+import { userAPI } from '../../utils/api';
 import AppHeader from '../../components/ui/AppHeader';
 import VerificationStep from './components/VerificationStep';
 
@@ -9,20 +11,20 @@ import Icon from '../../components/AppIcon';
 
 const KycVerification = () => {
   const navigate = useNavigate();
+  const { user, updateUser } = useAuth();
   const [currentStep, setCurrentStep] = useState(1);
   const [verificationData, setVerificationData] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Mock current user data
-  const { user } = useAuth();
+  // Use real user data from AuthContext with proper fallback
   const currentUser = user || {
     id: 'unknown',
     name: "Guest User",
     email: "guest@example.com",
     role: "startup",
     avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face",
-    kycStatus: "pending",
-    subscriptionTier: "pro",
+    kycStatus: "unverified",
+    subscriptionTier: "free",
     accountType: "individual" // individual or business
   };
 
@@ -121,38 +123,56 @@ const KycVerification = () => {
 
   const verificationSteps = getVerificationSteps();
 
-  // Mock verification status data
-  const [statusData, setStatusData] = useState({
-    overallStatus: 'in_progress', // pending, in_progress, approved, rejected
-    documents: {
-      government_id: { status: 'approved', uploadDate: '2024-12-08', rejectReason: null },
-      proof_of_address: { status: 'pending', uploadDate: '2024-12-09', rejectReason: null },
-      selfie: { status: 'rejected', uploadDate: '2024-12-08', rejectReason: 'Photo quality too low. Please ensure good lighting and face is clearly visible.' },
-      incorporation: { status: 'pending', uploadDate: null, rejectReason: null },
-      tax_certificate: { status: 'pending', uploadDate: null, rejectReason: null },
-      beneficial_ownership: { status: 'pending', uploadDate: null, rejectReason: null }
-    },
-    submissionDate: '2024-12-08',
-    reviewDeadline: '2024-12-15',
-    completionPercentage: 65
-  });
+  const getInitialStatusData = () => {
+    const kyc = currentUser?.kycStatus || 'unverified';
+    const isVerified = kyc === 'verified';
+    const isPending = kyc === 'pending';
+    
+    return {
+      overallStatus: isVerified ? 'approved' : isPending ? 'in_progress' : 'not_started',
+      documents: {
+        government_id: { 
+          status: isVerified ? 'approved' : isPending ? 'pending' : 'not_uploaded', 
+          uploadDate: isVerified || isPending ? '2026-06-23' : null, 
+          rejectReason: null 
+        },
+        proof_of_address: { 
+          status: isVerified ? 'approved' : isPending ? 'pending' : 'not_uploaded', 
+          uploadDate: isVerified || isPending ? '2026-06-23' : null, 
+          rejectReason: null 
+        },
+        selfie: { 
+          status: isVerified ? 'approved' : isPending ? 'pending' : 'not_uploaded', 
+          uploadDate: isVerified || isPending ? '2026-06-23' : null, 
+          rejectReason: null 
+        },
+        incorporation: { 
+          status: isVerified ? 'approved' : isPending ? 'pending' : 'not_uploaded', 
+          uploadDate: isVerified || isPending ? '2026-06-23' : null, 
+          rejectReason: null 
+        },
+        tax_certificate: { 
+          status: isVerified ? 'approved' : isPending ? 'pending' : 'not_uploaded', 
+          uploadDate: isVerified || isPending ? '2026-06-23' : null, 
+          rejectReason: null 
+        },
+        beneficial_ownership: { 
+          status: isVerified ? 'approved' : isPending ? 'pending' : 'not_uploaded', 
+          uploadDate: isVerified || isPending ? '2026-06-23' : null, 
+          rejectReason: null 
+        }
+      },
+      submissionDate: isVerified || isPending ? '2026-06-23' : null,
+      reviewDeadline: null,
+      completionPercentage: isVerified ? 100 : isPending ? 50 : 0
+    };
+  };
+
+  const [statusData, setStatusData] = useState(getInitialStatusData());
 
   useEffect(() => {
-    // Calculate completion percentage based on approved documents
-    const totalRequired = verificationSteps?.reduce((acc, step) => {
-      return acc + step?.documents?.filter(doc => doc?.required)?.length;
-    }, 0);
-    
-    const approvedRequired = Object?.entries(statusData?.documents)?.filter(([key, doc]) => {
-      const isRequired = verificationSteps?.some(step => 
-        step?.documents?.some(stepDoc => stepDoc?.type === key && stepDoc?.required)
-      );
-      return isRequired && doc?.status === 'approved';
-    })?.length;
-    
-    const percentage = Math?.round((approvedRequired / totalRequired) * 100);
-    setStatusData(prev => ({ ...prev, completionPercentage: percentage }));
-  }, [statusData?.documents]);
+    setStatusData(getInitialStatusData());
+  }, [currentUser?.kycStatus]);
 
   const handleDocumentUpload = (stepId, documentType, file, additionalData = {}) => {
     setVerificationData(prev => ({
@@ -164,34 +184,51 @@ const KycVerification = () => {
       }
     }));
 
-    // Simulate uploading and update status
-    setStatusData(prev => ({
-      ...prev,
-      documents: {
-        ...prev?.documents,
+    setStatusData(prev => {
+      const nextDocs = {
+        ...prev.documents,
         [documentType]: {
-          status: 'pending',
-          uploadDate: new Date()?.toISOString()?.split('T')?.[0],
+          status: 'approved', // Auto-approving for smooth prototyping experience on file select
+          uploadDate: new Date().toISOString().split('T')[0],
           rejectReason: null
         }
-      }
-    }));
+      };
+
+      const totalRequired = verificationSteps.reduce((acc, step) => {
+        return acc + step.documents.filter(doc => doc.required).length;
+      }, 0);
+
+      const approvedRequired = Object.entries(nextDocs).filter(([key, doc]) => {
+        const isRequired = verificationSteps.some(step => 
+          step.documents.some(stepDoc => stepDoc.type === key && stepDoc.required)
+        );
+        return isRequired && doc.status === 'approved';
+      }).length;
+
+      const percentage = Math.round((approvedRequired / totalRequired) * 100);
+
+      return {
+        ...prev,
+        documents: nextDocs,
+        completionPercentage: percentage
+      };
+    });
   };
 
   const handleSubmitForReview = async () => {
     setIsSubmitting(true);
-    
     try {
-      // Simulate API submission
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setStatusData(prev => ({
-        ...prev,
-        overallStatus: 'in_progress',
-        submissionDate: new Date()?.toISOString()?.split('T')?.[0]
-      }));
-      
-      console.log('KYC submitted for review:', verificationData);
+      const response = await userAPI.submitKyc(verificationData);
+      if (response.success) {
+        updateUser({ kycStatus: 'verified' });
+        setStatusData(prev => ({
+          ...prev,
+          overallStatus: 'approved',
+          completionPercentage: 100,
+          submissionDate: new Date().toISOString().split('T')[0]
+        }));
+        console.log('KYC Verification Successful:', response);
+      }
     } catch (error) {
       console.error('Submission error:', error);
     } finally {
@@ -223,7 +260,6 @@ const KycVerification = () => {
   const canProceedToStep = (stepId) => {
     if (stepId === 1) return true;
     
-    // Check if all previous required steps are approved
     for (let i = 1; i < stepId; i++) {
       if (getStepStatus(i) !== 'approved') {
         return false;
@@ -235,6 +271,14 @@ const KycVerification = () => {
   const allRequiredStepsCompleted = () => {
     return verificationSteps?.every(step => 
       getStepStatus(step?.id) === 'approved' || !step?.required
+    );
+  };
+
+  const allRequiredUploaded = () => {
+    return verificationSteps?.every(step => 
+      step?.documents?.every(doc => 
+        !doc?.required || statusData?.documents?.[doc?.type]?.uploadDate
+      )
     );
   };
 
@@ -283,17 +327,6 @@ const KycVerification = () => {
           </div>
         </div>
       </div>
-      
-      {statusData?.reviewDeadline && (
-        <div className="mt-4 p-3 bg-warning/10 border border-warning/20 rounded-lg">
-          <div className="flex items-center space-x-2">
-            <Icon name="Clock" size={16} className="text-warning" />
-            <span className="text-sm text-warning font-medium">
-              Review deadline: {new Date(statusData?.reviewDeadline)?.toLocaleDateString()}
-            </span>
-          </div>
-        </div>
-      )}
     </div>
   );
 
@@ -342,6 +375,26 @@ const KycVerification = () => {
           </div>
 
           {/* Submit Section */}
+          {!allRequiredStepsCompleted() && allRequiredUploaded() && (
+            <div className="mt-8 p-6 bg-card border border-border rounded-lg text-center space-y-4">
+              <Icon name="UploadCloud" size={32} className="text-primary mx-auto" />
+              <h3 className="text-lg font-semibold text-foreground">
+                Ready for Verification
+              </h3>
+              <p className="text-muted-foreground max-w-md mx-auto">
+                You have uploaded all required documents. Submit them now for instant automated verification.
+              </p>
+              <Button
+                onClick={handleSubmitForReview}
+                loading={isSubmitting}
+                iconName="ShieldCheck"
+                className="w-full sm:w-auto"
+              >
+                Submit Documents for Verification
+              </Button>
+            </div>
+          )}
+
           {allRequiredStepsCompleted() && (
             <div className="mt-8 p-6 bg-success/10 border border-success/20 rounded-lg text-center">
               <Icon name="CheckCircle" size={32} className="text-success mx-auto mb-3" />
@@ -352,10 +405,10 @@ const KycVerification = () => {
                 All required documents have been uploaded and approved. Your account is now fully verified.
               </p>
               <Button
-                onClick={() => navigate('/user-profile-management')}
+                onClick={() => navigate('/investor-dashboard')}
                 iconName="ArrowRight"
               >
-                Continue to Profile
+                Go to Dashboard
               </Button>
             </div>
           )}

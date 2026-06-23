@@ -147,6 +147,11 @@ export const userAPI = {
     const response = await api.put('/users/profile', profileData);
     return response.data;
   },
+
+  submitKyc: async (kycData) => {
+    const response = await api.put('/users/kyc', kycData);
+    return response.data;
+  },
 };
 
 // Startup API calls

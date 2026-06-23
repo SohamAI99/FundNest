@@ -160,6 +160,7 @@ router.post('/register', authRateLimit, async (req, res) => {
         firstName: userData.first_name,
         lastName: userData.last_name,
         role: userData.role,
+        kycStatus: 'unverified',
         subscriptionPlan: 'free'
       }
     });
@@ -234,6 +235,7 @@ router.post('/login', loginRateLimit, async (req, res) => {
         firstName: user.first_name,
         lastName: user.last_name,
         role: user.role,
+        kycStatus: user.kyc_status || 'unverified',
         subscriptionPlan: user.subscription_plan || 'free'
       }
     });

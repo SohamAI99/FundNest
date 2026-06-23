@@ -21,6 +21,7 @@ model User {
   is_active           Boolean        @default(true)
   subscription_plan   String         @default("free") // 'free', 'pro', 'enterprise'
   subscription_status String         @default("active") // 'active', 'cancelled', 'past_due'
+  kyc_status          String         @default("unverified") // 'unverified', 'pending', 'verified', 'rejected'
   reset_token         String?
   reset_token_expiry  DateTime?
   created_at          DateTime       @default(now())
