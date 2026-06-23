@@ -122,7 +122,7 @@ router.post('/', authenticateToken, async (req, res) => {
         check_size_range: checkSize || '50k-250k',
         check_size_min: 415000, // Default min in paisa
         check_size_max: 2075000, // Default max in paisa
-        experience_years: experienceYears || 1,
+        experience_years: experienceYears ? parseInt(experienceYears) : 1,
         preferred_sectors: preferredSectors || ['technology'],
         preferred_stages: preferredStages || ['seed']
       },
@@ -191,7 +191,7 @@ router.put('/:id', authenticateToken, async (req, res) => {
         check_size_range: checkSize,
         check_size_min: checkSize ? 415000 : undefined,
         check_size_max: checkSize ? 2075000 : undefined,
-        experience_years: experienceYears,
+        experience_years: experienceYears ? parseInt(experienceYears) : undefined,
         preferred_sectors: preferredSectors,
         preferred_stages: preferredStages
       },

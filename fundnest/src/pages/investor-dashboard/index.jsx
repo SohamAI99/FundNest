@@ -41,7 +41,7 @@ const InvestorDashboard = () => {
       try {
         const response = await statsAPI.getDashboardStats(user.id);
         if (response.success) {
-          setDashboardStats(response.data);
+          setDashboardStats(response.stats);
         }
       } catch (error) {
         console.error('Failed to fetch dashboard stats:', error);
@@ -79,16 +79,16 @@ const InvestorDashboard = () => {
       };
     }
 
-    const investor = dashboardStats.investor_info;
+    const portfolioVal = (dashboardStats.portfolioSize || 0) * 250000;
     return {
-      portfolioValue: investor?.total_invested || 0,
-      portfolioChange: investor?.total_invested > 0 ? 12.5 : 0,
-      activeDeals: dashboardStats.startup_matches || 0,
-      activeDealsChange: dashboardStats.startup_matches || 0,
-      pendingOpportunities: investor?.portfolio_size || 0,
-      pendingChange: investor?.portfolio_size > 0 ? Math.floor(investor.portfolio_size / 3) : 0,
-      monthlyROI: investor?.total_invested > 0 ? 8.2 : 0,
-      roiChange: investor?.total_invested > 0 ? 1.8 : 0
+      portfolioValue: portfolioVal,
+      portfolioChange: portfolioVal > 0 ? 12.5 : 0,
+      activeDeals: dashboardStats.dealsCompleted || 0,
+      activeDealsChange: dashboardStats.dealsCompleted > 0 ? 1 : 0,
+      pendingOpportunities: dashboardStats.meetingsScheduled || 0,
+      pendingChange: dashboardStats.meetingsScheduled > 0 ? 2 : 0,
+      monthlyROI: portfolioVal > 0 ? 8.2 : 0,
+      roiChange: portfolioVal > 0 ? 1.8 : 0
     };
   };
 

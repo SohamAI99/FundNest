@@ -50,10 +50,10 @@ const PlanComparisonCard = ({ plan, billingCycle, currentPlan, onUpgrade }) => {
           {billingCycle === 'yearly' && savings > 0 && (
             <div className="space-y-1">
               <p className="text-sm text-muted-foreground line-through">
-                ${originalPrice}/year
+                ₹{originalPrice}/year
               </p>
               <p className="text-sm text-success font-medium">
-                Save ${savings} per year
+                Save ₹{savings} per year
               </p>
             </div>
           )}
@@ -128,7 +128,7 @@ const PlanComparisonCard = ({ plan, billingCycle, currentPlan, onUpgrade }) => {
           </Button>
         )}
         
-        {isPro && !isCurrentPlan && (
+        {plan?.id !== 'free' && !isCurrentPlan && (
           <p className="text-xs text-center text-muted-foreground">
             Cancel anytime • No setup fees • Instant activation
           </p>
@@ -136,7 +136,7 @@ const PlanComparisonCard = ({ plan, billingCycle, currentPlan, onUpgrade }) => {
       </div>
 
       {/* Money Back Guarantee */}
-      {isPro && (
+      {plan?.id !== 'free' && (
         <div className="mt-6 pt-6 border-t border-border">
           <div className="flex items-center justify-center space-x-2 text-sm text-muted-foreground">
             <Icon name="Shield" size={16} className="text-success" />

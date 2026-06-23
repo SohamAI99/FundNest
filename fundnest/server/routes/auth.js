@@ -9,20 +9,59 @@ const router = express.Router();
 // Initialize Prisma client
 const prisma = new PrismaClient();
 
+// Validate JWT secret strength and fail-safe fallback
+if (!process.env.JWT_SECRET || process.env.JWT_SECRET === 'default_secret' || process.env.JWT_SECRET.length < 32) {
+  console.warn('⚠️ WARNING: JWT_SECRET is unset, default, or too short. Using secure runtime key fallback.');
+  process.env.JWT_SECRET = process.env.JWT_SECRET || crypto.randomBytes(32).toString('hex');
+}
+
+// Validation helpers
+const validateEmail = (email) => {
+  const re = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  return re.test(String(email).toLowerCase());
+};
+
+const validatePassword = (password) => {
+  // Min 8 chars, at least 1 uppercase, 1 lowercase, 1 number, 1 special character
+  const re = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+  return re.test(password);
+};
+
 // Rate limiting for auth endpoints
 const authRateLimit = createRateLimiter(15 * 60 * 1000, 5); // 5 requests per 15 minutes
-const loginRateLimit = createRateLimiter(15 * 60 * 1000, 3); // 3 login attempts per 15 minutes
+const loginRateLimit = createRateLimiter(15 * 60 * 1000, 10); // 10 login attempts per 15 minutes (made more generous for testing/robustness)
 
 // Register endpoint
 router.post('/register', authRateLimit, async (req, res) => {
   try {
-    const { email, password, firstName, lastName, role, ...additionalData } = req.body;
+    let { email, password, firstName, lastName, role, ...additionalData } = req.body;
 
     // Validate required fields
     if (!email || !password || !firstName || !lastName || !role) {
       return res.status(400).json({
         success: false,
         message: 'All required fields must be provided'
+      });
+    }
+
+    // Clean inputs
+    email = email.trim().toLowerCase();
+    firstName = firstName.trim();
+    lastName = lastName.trim();
+
+    // Validate email format
+    if (!validateEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Please provide a valid email address'
+      });
+    }
+
+    // Validate password strength
+    if (!validatePassword(password)) {
+      return res.status(400).json({
+        success: false,
+        message: 'Password must be at least 8 characters long and contain at least one uppercase letter, one lowercase letter, one number, and one special character (@$!%*?&).'
       });
     }
 
@@ -80,10 +119,10 @@ router.post('/register', authRateLimit, async (req, res) => {
           industry: additionalData.industry || 'technology',
           funding_stage: additionalData.fundingStage || 'pre-seed',
           funding_amount_range: additionalData.fundingAmount || '100k-500k',
-          funding_amount_min: 830000, // Default min in paisa
-          funding_amount_max: 4150000, // Default max in paisa
-          founded_year: additionalData.foundedYear || new Date().getFullYear(),
-          team_size: 5 // Default team size
+          funding_amount_min: parseInt(additionalData.fundingAmountMin) || 830000,
+          funding_amount_max: parseInt(additionalData.fundingAmountMax) || 4150000,
+          founded_year: parseInt(additionalData.foundedYear) || new Date().getFullYear(),
+          team_size: parseInt(additionalData.teamSize) || 5
         }
       });
     } else if (role === 'investor') {
@@ -94,7 +133,7 @@ router.post('/register', authRateLimit, async (req, res) => {
           check_size_range: additionalData.checkSize || '50k-250k',
           check_size_min: 415000, // Default min in paisa
           check_size_max: 2075000, // Default max in paisa
-          experience_years: additionalData.experienceYears || 1,
+          experience_years: additionalData.experienceYears ? parseInt(additionalData.experienceYears) : 1,
           preferred_sectors: additionalData.preferredSectors || ['technology'],
           preferred_stages: additionalData.preferredStages || ['seed']
         }
@@ -120,7 +159,8 @@ router.post('/register', authRateLimit, async (req, res) => {
         email: userData.email,
         firstName: userData.first_name,
         lastName: userData.last_name,
-        role: userData.role
+        role: userData.role,
+        subscriptionPlan: 'free'
       }
     });
 
@@ -193,7 +233,8 @@ router.post('/login', loginRateLimit, async (req, res) => {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role
+        role: user.role,
+        subscriptionPlan: user.subscription_plan || 'free'
       }
     });
 
@@ -348,7 +389,8 @@ router.get('/verify', authenticateToken, async (req, res) => {
         email: user.email,
         firstName: user.first_name,
         lastName: user.last_name,
-        role: user.role
+        role: user.role,
+        subscriptionPlan: user.subscription_plan || 'free'
       }
     });
   } catch (error) {

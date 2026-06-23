@@ -127,8 +127,8 @@ router.post('/', authenticateToken, async (req, res) => {
         funding_amount_range: fundingAmount || '100k-500k',
         funding_amount_min: 830000, // Default min in paisa
         funding_amount_max: 4150000, // Default max in paisa
-        founded_year: foundedYear || new Date().getFullYear(),
-        team_size: teamSize || 5
+        founded_year: foundedYear ? parseInt(foundedYear) : new Date().getFullYear(),
+        team_size: teamSize ? parseInt(teamSize) : 5
       },
       include: {
         user: {
@@ -200,8 +200,8 @@ router.put('/:id', authenticateToken, async (req, res) => {
         funding_amount_range: fundingAmount,
         funding_amount_min: fundingAmount ? 830000 : undefined,
         funding_amount_max: fundingAmount ? 4150000 : undefined,
-        founded_year: foundedYear,
-        team_size: teamSize
+        founded_year: foundedYear ? parseInt(foundedYear) : undefined,
+        team_size: teamSize ? parseInt(teamSize) : undefined
       },
       include: {
         user: {

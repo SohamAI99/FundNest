@@ -7,12 +7,22 @@ import NotificationBadge from './NotificationBadge';
 
 const AppHeader = ({ notifications = 0, onNavigate }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isScrolled, setIsScrolled] = useState(false);
   const navigate = useNavigate();
   const location = useLocation();
   const mobileMenuRef = useRef(null);
   const { user, isAuthenticated } = useAuth();
 
   const currentPath = location?.pathname;
+
+  // Scroll detection for glass effect
+  useEffect(() => {
+    const handleScroll = () => {
+      setIsScrolled(window.scrollY > 10);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
 
   const navigationItems = [
     {
@@ -27,18 +37,60 @@ const AppHeader = ({ notifications = 0, onNavigate }) => {
       icon: 'MessageSquare',
       roles: ['startup', 'investor'],
       hasNotifications: notifications > 0
+    },
+    {
+      label: 'Profile',
+      path: '/user-profile-management',
+      icon: 'User',
+      roles: ['startup', 'investor']
+    },
+    {
+      label: 'Subscription',
+      path: '/subscription-management',
+      icon: 'CreditCard',
+      roles: ['startup', 'investor']
     }
   ];
 
   const publicNavigationItems = [
-    // Home button removed as requested
+    {
+      label: 'How It Works',
+      path: '/#how-it-works',
+      icon: 'Lightbulb',
+      isAnchor: true
+    },
+    {
+      label: 'Pricing',
+      path: '/#pricing',
+      icon: 'CreditCard',
+      isAnchor: true
+    }
   ];
 
-  // Only show navigation items if not on home page
   const shouldShowNavigation = currentPath !== '/' && isAuthenticated;
 
-  const handleNavigation = (path) => {
-    navigate(path);
+  const handleNavigation = (path, isAnchor = false) => {
+    if (isAnchor) {
+      const elementId = path.replace('/#', '');
+      if (currentPath === '/') {
+        // Already on landing page, scroll to section
+        const element = document.getElementById(elementId);
+        if (element) {
+          element.scrollIntoView({ behavior: 'smooth' });
+        }
+      } else {
+        // Navigate to landing page first, then scroll
+        navigate('/');
+        setTimeout(() => {
+          const element = document.getElementById(elementId);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 300);
+      }
+    } else {
+      navigate(path);
+    }
     setIsMobileMenuOpen(false);
     if (onNavigate) {
       onNavigate(path);
@@ -85,11 +137,13 @@ const AppHeader = ({ notifications = 0, onNavigate }) => {
       className="flex items-center cursor-pointer transition-smooth hover:opacity-80"
       onClick={() => handleNavigation(isAuthenticated ? (user?.role === 'startup' ? '/startup-dashboard' : '/investor-dashboard') : '/')}
     >
-      <div className="flex items-center space-x-2">
-        <div className="w-8 h-8 bg-gradient-to-br from-primary to-accent rounded-lg flex items-center justify-center">
+      <div className="flex items-center space-x-2.5">
+        <div className="w-9 h-9 bg-gradient-to-br from-primary via-secondary to-accent rounded-xl flex items-center justify-center shadow-md">
           <Icon name="TrendingUp" size={20} color="white" strokeWidth={2.5} />
         </div>
-        <span className="text-xl font-bold text-primary font-sans">FundNest</span>
+        <span className="text-xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent font-sans">
+          FundNest
+        </span>
       </div>
     </div>
   );
@@ -107,7 +161,7 @@ const AppHeader = ({ notifications = 0, onNavigate }) => {
 
     return (
       <button
-        onClick={() => handleNavigation(item?.path)}
+        onClick={() => handleNavigation(item?.path, item?.isAnchor)}
         className={`${baseClasses} ${activeClasses}`}
         aria-current={isActive ? 'page' : undefined}
       >
@@ -130,15 +184,19 @@ const AppHeader = ({ notifications = 0, onNavigate }) => {
       </button>
       <button
         onClick={() => handleAuthAction('register')}
-        className="px-4 py-2 text-sm font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-smooth focus-ring rounded-lg"
+        className="px-5 py-2.5 text-sm font-semibold bg-gradient-to-r from-primary to-secondary text-white hover:opacity-90 transition-smooth focus-ring rounded-xl shadow-md hover:shadow-lg"
       >
-        Get Started
+        Get Started Free
       </button>
     </div>
   );
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 glass-nav border-b border-border/50">
+    <header className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
+      isScrolled 
+        ? 'glass-nav border-b border-border/50 shadow-sm' 
+        : 'bg-transparent'
+    }`}>
       <div className="max-w-7xl mx-auto px-6">
         <div className="flex items-center justify-between h-16">
           {/* Logo */}

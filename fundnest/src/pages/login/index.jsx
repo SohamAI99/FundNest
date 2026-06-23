@@ -16,7 +16,7 @@ const Login = () => {
 
   // Get redirect URL from query params
   const searchParams = new URLSearchParams(location.search);
-  const redirectTo = searchParams.get('redirect') || '';
+  const redirectTo = searchParams.get('redirect') || searchParams.get('redirectTo') || '';
 
   // Redirect if already authenticated
   useEffect(() => {
@@ -24,7 +24,7 @@ const Login = () => {
       const targetUrl = redirectTo || (user.role === 'startup' ? '/startup-dashboard' : '/investor-dashboard');
       navigate(targetUrl, { replace: true });
     }
-  }, [isAuthenticated, user, navigate, redirectTo]);
+  }, [isAuthenticated, user, navigate, redirectTo, location]);
 
   const handleLogin = async (credentials, rememberMe) => {
     setIsLoading(true);

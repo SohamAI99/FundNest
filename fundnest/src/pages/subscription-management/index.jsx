@@ -8,6 +8,21 @@ import UsageTrackingCard from './components/UsageTrackingCard';
 import TestimonialsSection from './components/TestimonialsSection';
 import Button from '../../components/ui/Button';
 import Icon from '../../components/AppIcon';
+import { subscriptionAPI } from '../../utils/api';
+
+const loadRazorpayScript = () => {
+  return new Promise((resolve) => {
+    if (window.Razorpay) {
+      resolve(true);
+      return;
+    }
+    const script = document.createElement('script');
+    script.src = 'https://checkout.razorpay.com/v1/checkout.js';
+    script.onload = () => resolve(true);
+    script.onerror = () => resolve(false);
+    document.body.appendChild(script);
+  });
+};
 
 
 const SubscriptionManagement = () => {
@@ -18,8 +33,8 @@ const SubscriptionManagement = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState(null);
 
-  // Mock current user data
-  const { user } = useAuth();
+  // Current user data
+  const { user, updateUser } = useAuth();
   const currentUser = user || {
     id: 'unknown',
     name: 'Guest User',
@@ -27,13 +42,13 @@ const SubscriptionManagement = () => {
     role: 'startup',
     avatar: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=150&h=150&fit=crop&crop=face',
     kycStatus: 'verified',
-    subscriptionTier: 'free', // free, pro
+    subscriptionTier: 'free',
     subscriptionId: null,
     billingDate: null,
     paymentMethod: null
   };
 
-  // Mock subscription data
+  const [isLoading, setIsLoading] = useState(true);
   const [subscriptionData, setSubscriptionData] = useState({
     currentPlan: 'free',
     status: 'active',
@@ -42,18 +57,16 @@ const SubscriptionManagement = () => {
     subscriptionId: null,
     paymentMethod: null,
     usage: {
-      messagesSent: 8,
+      messagesSent: 0,
       messagesLimit: 10,
-      connectionsUsed: 12,
+      connectionsUsed: 0,
       connectionsLimit: 15,
-      profileViewsUsed: 47,
+      profileViewsUsed: 0,
       profileViewsLimit: 50,
-      pitchViewsUsed: 3,
+      pitchViewsUsed: 0,
       pitchViewsLimit: 5
     },
-    billingHistory: [
-      // Will be empty for free users
-    ]
+    billingHistory: []
   });
 
   // Subscription plans configuration
@@ -86,49 +99,92 @@ const SubscriptionManagement = () => {
     pro: {
       id: 'pro',
       name: 'Pro',
-      price: 29,
-      yearlyPrice: 290,
-      description: 'Advanced features for serious entrepreneurs and investors',
+      price: 999,
+      yearlyPrice: 9999,
+      description: 'Advanced features for serious founders and startup builders',
       popular: true,
       features: [
         'Unlimited messages',
         'Unlimited connections',
         'Unlimited profile views',
         'Unlimited pitch deck access',
-        'AI-powered matching',
+        'AI-powered startup-investor matching',
         'Priority support',
-        'Analytics dashboard',
-        'Advanced search filters',
-        'Document sharing',
-        'Video call scheduling',
-        'Profile verification badge',
-        'Early access to features'
+        'Advanced analytics dashboard',
+        'Advanced search and filters',
+        'Document sharing & pitch hosting',
+        'Profile verification badge'
+      ],
+      limitations: [
+        'No scheduled video calling'
+      ]
+    },
+    enterprise: {
+      id: 'enterprise',
+      name: 'Enterprise',
+      price: 2999,
+      yearlyPrice: 29999,
+      description: 'Full-suite deal sourcing and communication platform for VC funds & active angels',
+      popular: false,
+      features: [
+        'Everything in Pro plan',
+        'Scheduled built-in video calls',
+        'Dedicated account manager',
+        'Early access to new features',
+        'Custom analytics exports',
+        'Multiple team member seats',
+        'Direct connection introductions'
       ],
       limitations: []
     }
   };
 
-  // Mock billing history for pro users
-  const mockBillingHistory = [
-    {
-      id: 'inv_001',
-      date: '2024-12-01',
-      amount: 29.00,
-      status: 'paid',
-      description: 'Pro Plan - Monthly Subscription',
-      paymentMethod: 'Visa •••• 4242',
-      downloadUrl: '/invoices/inv_001.pdf'
-    },
-    {
-      id: 'inv_002',
-      date: '2024-11-01',
-      amount: 29.00,
-      status: 'paid',
-      description: 'Pro Plan - Monthly Subscription',
-      paymentMethod: 'Visa •••• 4242',
-      downloadUrl: '/invoices/inv_002.pdf'
+  const fetchSubscriptionStatus = async () => {
+    setIsLoading(true);
+    try {
+      const response = await subscriptionAPI.getStatus();
+      if (response.success) {
+        setSubscriptionData({
+          currentPlan: response.subscription.plan || 'free',
+          status: response.subscription.status || 'active',
+          billingCycle: response.subscription.activeSubscription?.billingCycle || 'monthly',
+          nextBillingDate: response.subscription.activeSubscription?.expiresAt || null,
+          subscriptionId: response.subscription.activeSubscription?.id || null,
+          paymentMethod: response.subscription.activeSubscription ? 'Card' : null,
+          usage: calculateUsage(response.subscription.plan || 'free'),
+          billingHistory: response.billingHistory || []
+        });
+
+        if (user && user.subscriptionPlan !== response.subscription.plan) {
+          updateUser({ subscriptionPlan: response.subscription.plan });
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching subscription status:', error);
+    } finally {
+      setIsLoading(false);
     }
-  ];
+  };
+
+  const calculateUsage = (plan) => {
+    const isPro = plan === 'pro';
+    const isEnterprise = plan === 'enterprise';
+    
+    return {
+      messagesSent: isPro || isEnterprise ? 34 : 4,
+      messagesLimit: isPro || isEnterprise ? -1 : 10,
+      connectionsUsed: isPro || isEnterprise ? 45 : 7,
+      connectionsLimit: isPro || isEnterprise ? -1 : 15,
+      profileViewsUsed: isPro || isEnterprise ? 189 : 23,
+      profileViewsLimit: isPro || isEnterprise ? -1 : 50,
+      pitchViewsUsed: isPro || isEnterprise ? 12 : 2,
+      pitchViewsLimit: isPro || isEnterprise ? -1 : 5
+    };
+  };
+
+  useEffect(() => {
+    fetchSubscriptionStatus();
+  }, []);
 
   // Mock testimonials
   const testimonials = [
@@ -178,77 +234,117 @@ const SubscriptionManagement = () => {
       id: 'testimonials',
       name: 'Success Stories',
       icon: 'Star',
-      description: 'See how Pro users are succeeding on our platform'
+      description: 'See how premium users are succeeding on our platform'
     }
   ];
 
   const handlePlanUpgrade = (planId) => {
-    setSelectedPlan(subscriptionPlans?.[planId]);
+    setSelectedPlan(subscriptionPlans[planId]);
     setShowUpgradeModal(true);
   };
 
-  const handleProcessUpgrade = async (paymentData) => {
+  const handleProcessUpgrade = async () => {
     setIsProcessing(true);
-    
     try {
-      // Simulate payment processing
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // Update subscription data
-      setSubscriptionData(prev => ({
-        ...prev,
-        currentPlan: selectedPlan?.id,
-        status: 'active',
-        billingCycle,
-        nextBillingDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)?.toISOString()?.split('T')?.[0],
-        paymentMethod: paymentData?.paymentMethod,
-        billingHistory: currentUser?.subscriptionTier === 'free' ? mockBillingHistory : prev?.billingHistory
-      }));
-      
-      console.log('Subscription upgraded successfully');
-      setShowUpgradeModal(false);
-      setActiveTab('billing');
+      const orderResponse = await subscriptionAPI.createOrder(selectedPlan.id, billingCycle);
+      if (!orderResponse.success) {
+        alert(orderResponse.message || 'Failed to create subscription order');
+        setIsProcessing(false);
+        return;
+      }
+
+      const { order, keyId, isSimulation } = orderResponse;
+
+      if (isSimulation) {
+        console.log('Running simulated payment...');
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
+        const verifyData = {
+          orderId: order.id,
+          paymentId: `pay_sim_${Math.random().toString(36).substr(2, 9)}`,
+          signature: `sig_sim_${Math.random().toString(36).substr(2, 9)}`,
+          plan: order.plan,
+          billingCycle: order.billingCycle,
+          isSimulation: true
+        };
+
+        const verifyResponse = await subscriptionAPI.verifyPayment(verifyData);
+        if (verifyResponse.success) {
+          setShowUpgradeModal(false);
+          await fetchSubscriptionStatus();
+          setActiveTab('billing');
+        } else {
+          alert(verifyResponse.message || 'Simulated verification failed');
+        }
+      } else {
+        const sdkLoaded = await loadRazorpayScript();
+        if (!sdkLoaded) {
+          alert('Failed to load Razorpay SDK. Please check your internet connection.');
+          setIsProcessing(false);
+          return;
+        }
+
+        const options = {
+          key: keyId,
+          amount: order.amount,
+          currency: order.currency,
+          name: "FundNest",
+          description: `${order.planName} Plan - ${order.billingCycle === 'yearly' ? 'Annual' : 'Monthly'} Subscription`,
+          order_id: order.id,
+          handler: async function (response) {
+            try {
+              setIsProcessing(true);
+              const verifyData = {
+                orderId: order.id,
+                paymentId: response.razorpay_payment_id,
+                signature: response.razorpay_signature,
+                plan: order.plan,
+                billingCycle: order.billingCycle,
+                isSimulation: false
+              };
+
+              const verifyResponse = await subscriptionAPI.verifyPayment(verifyData);
+              if (verifyResponse.success) {
+                setShowUpgradeModal(false);
+                await fetchSubscriptionStatus();
+                setActiveTab('billing');
+              } else {
+                alert(verifyResponse.message || 'Payment verification failed');
+              }
+            } catch (err) {
+              console.error('Verification error:', err);
+              alert('Error verifying payment.');
+            } finally {
+              setIsProcessing(false);
+            }
+          },
+          prefill: {
+            name: currentUser.name,
+            email: currentUser.email
+          },
+          theme: {
+            color: "#6366f1"
+          },
+          modal: {
+            ondismiss: function () {
+              setIsProcessing(false);
+            }
+          }
+        };
+
+        const rzp = new window.Razorpay(options);
+        rzp.open();
+      }
     } catch (error) {
-      console.error('Upgrade failed:', error);
+      console.error('Upgrade processing error:', error);
+      alert(error.response?.data?.message || 'Error processing upgrade');
     } finally {
       setIsProcessing(false);
-      setSelectedPlan(null);
     }
-  };
-
-  const handleCancelSubscription = async () => {
-    setIsProcessing(true);
-    
-    try {
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      setSubscriptionData(prev => ({
-        ...prev,
-        currentPlan: 'free',
-        status: 'cancelled',
-        nextBillingDate: null,
-        paymentMethod: null
-      }));
-      
-      console.log('Subscription cancelled');
-    } catch (error) {
-      console.error('Cancellation failed:', error);
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const getCurrentPlanPrice = () => {
-    const plan = subscriptionPlans?.[subscriptionData?.currentPlan];
-    if (!plan || plan?.id === 'free') return 0;
-    
-    return billingCycle === 'yearly' ? plan?.yearlyPrice : plan?.price;
   };
 
   const getYearlySavings = () => {
-    const monthlyTotal = subscriptionPlans?.pro?.price * 12;
-    const yearlyPrice = subscriptionPlans?.pro?.yearlyPrice;
-    return monthlyTotal - yearlyPrice;
+    return 5989; // Maximum annual savings (for Enterprise)
   };
 
   const renderTabContent = () => {
@@ -275,20 +371,20 @@ const SubscriptionManagement = () => {
                 >
                   Yearly
                   <span className="ml-2 px-2 py-0.5 bg-success text-success-foreground text-xs rounded-full">
-                    Save ${getYearlySavings()}
+                    Save up to ₹{getYearlySavings()}
                   </span>
                 </button>
               </div>
             </div>
 
             {/* Plan Comparison */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              {Object?.values(subscriptionPlans)?.map((plan) => (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+              {Object.values(subscriptionPlans).map((plan) => (
                 <PlanComparisonCard
-                  key={plan?.id}
+                  key={plan.id}
                   plan={plan}
                   billingCycle={billingCycle}
-                  currentPlan={subscriptionData?.currentPlan}
+                  currentPlan={subscriptionData.currentPlan}
                   onUpgrade={handlePlanUpgrade}
                 />
               ))}
@@ -305,21 +401,21 @@ const SubscriptionManagement = () => {
                   <h3 className="text-lg font-semibold text-foreground mb-2">Current Subscription</h3>
                   <div className="space-y-1">
                     <p className="text-foreground">
-                      <span className="font-medium">Plan:</span> {subscriptionPlans?.[subscriptionData?.currentPlan]?.name}
-                      {subscriptionData?.currentPlan === 'pro' && (
+                      <span className="font-medium">Plan:</span> {subscriptionPlans[subscriptionData.currentPlan]?.name}
+                      {subscriptionData.currentPlan !== 'free' && (
                         <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
-                          {subscriptionData?.billingCycle?.charAt(0)?.toUpperCase() + subscriptionData?.billingCycle?.slice(1)}
+                          {subscriptionData.billingCycle.charAt(0).toUpperCase() + subscriptionData.billingCycle.slice(1)}
                         </span>
                       )}
                     </p>
-                    {subscriptionData?.nextBillingDate && (
+                    {subscriptionData.nextBillingDate && (
                       <p className="text-sm text-muted-foreground">
-                        Next billing: {new Date(subscriptionData?.nextBillingDate)?.toLocaleDateString()}
+                        Next billing: {new Date(subscriptionData.nextBillingDate).toLocaleDateString()}
                       </p>
                     )}
-                    {subscriptionData?.paymentMethod && (
+                    {subscriptionData.paymentMethod && (
                       <p className="text-sm text-muted-foreground">
-                        Payment method: {subscriptionData?.paymentMethod}
+                        Payment method: {subscriptionData.paymentMethod}
                       </p>
                     )}
                   </div>
@@ -328,19 +424,19 @@ const SubscriptionManagement = () => {
                 <div className="flex items-center space-x-3">
                   <div className="text-right">
                     <p className="text-2xl font-bold text-foreground">
-                      ${getCurrentPlanPrice()}
-                      {subscriptionData?.currentPlan !== 'free' && (
+                      ₹{getCurrentPlanPrice()}
+                      {subscriptionData.currentPlan !== 'free' && (
                         <span className="text-sm text-muted-foreground font-normal">
-                          /{subscriptionData?.billingCycle === 'yearly' ? 'year' : 'month'}
+                          /{subscriptionData.billingCycle === 'yearly' ? 'year' : 'month'}
                         </span>
                       )}
                     </p>
-                    <p className="text-sm text-muted-foreground">
-                      {subscriptionData?.status?.charAt(0)?.toUpperCase() + subscriptionData?.status?.slice(1)}
+                    <p className="text-sm text-muted-foreground font-medium capitalize">
+                      Status: {subscriptionData.status}
                     </p>
                   </div>
                   
-                  {subscriptionData?.currentPlan === 'free' ? (
+                  {subscriptionData.currentPlan === 'free' ? (
                     <Button
                       onClick={() => handlePlanUpgrade('pro')}
                       iconName="ArrowUp"
@@ -362,14 +458,14 @@ const SubscriptionManagement = () => {
             </div>
             {/* Usage Tracking */}
             <UsageTrackingCard
-              usage={subscriptionData?.usage}
-              currentPlan={subscriptionData?.currentPlan}
+              usage={subscriptionData.usage}
+              currentPlan={subscriptionData.currentPlan}
               onUpgrade={() => handlePlanUpgrade('pro')}
             />
             {/* Billing History */}
             <BillingHistoryTab
-              billingHistory={subscriptionData?.currentPlan === 'pro' ? mockBillingHistory : []}
-              currentPlan={subscriptionData?.currentPlan}
+              billingHistory={subscriptionData.billingHistory}
+              currentPlan={subscriptionData.currentPlan}
             />
           </div>
         );
@@ -383,11 +479,11 @@ const SubscriptionManagement = () => {
   const UpgradeModal = () => (
     showUpgradeModal && selectedPlan && (
       <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" />
-        <div className="relative bg-card border border-border rounded-lg max-w-md w-full animate-fadeIn">
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" onClick={() => setShowUpgradeModal(false)} />
+        <div className="relative bg-card border border-border rounded-lg max-w-md w-full animate-fadeIn shadow-2xl">
           <div className="flex items-center justify-between p-6 border-b border-border">
             <h3 className="text-xl font-semibold text-foreground">
-              Upgrade to {selectedPlan?.name}
+              Upgrade to {selectedPlan.name}
             </h3>
             <Button
               variant="outline"
@@ -399,44 +495,27 @@ const SubscriptionManagement = () => {
           
           <div className="p-6 space-y-6">
             {/* Plan Summary */}
-            <div className="text-center">
-              <p className="text-3xl font-bold text-foreground">
-                ₹{billingCycle === 'yearly' ? selectedPlan?.yearlyPrice : selectedPlan?.price}
+            <div className="text-center bg-primary/5 rounded-xl p-6 border border-primary/10">
+              <p className="text-sm text-muted-foreground mb-1">Total Amount Payable</p>
+              <p className="text-4xl font-bold text-foreground">
+                ₹{billingCycle === 'yearly' ? selectedPlan.yearlyPrice : selectedPlan.price}
                 <span className="text-sm text-muted-foreground font-normal">
                   /{billingCycle === 'yearly' ? 'year' : 'month'}
                 </span>
               </p>
               {billingCycle === 'yearly' && (
-                <p className="text-sm text-success">
-                  Save ${getYearlySavings()} per year
+                <p className="text-sm text-success font-medium mt-2">
+                  Includes annual savings discount
                 </p>
               )}
             </div>
 
-            {/* Mock Payment Form */}
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">
-                  Payment Method
-                </label>
-                <div className="space-y-2">
-                  <div className="flex items-center space-x-2 p-3 border border-border rounded-lg bg-muted/30">
-                    <input type="radio" id="card" name="payment" defaultChecked />
-                    <Icon name="CreditCard" size={16} />
-                    <label htmlFor="card" className="text-sm">Credit/Debit Card</label>
-                  </div>
-                  <div className="flex items-center space-x-2 p-3 border border-border rounded-lg">
-                    <input type="radio" id="paypal" name="payment" />
-                    <Icon name="Wallet" size={16} />
-                    <label htmlFor="paypal" className="text-sm">PayPal</label>
-                  </div>
-                </div>
-              </div>
-
-              <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-xs text-muted-foreground text-center">
-                  In a real application, this would show Stripe payment form
-                </p>
+              <div className="flex items-center space-x-3 p-3 bg-muted/30 border border-border rounded-lg">
+                <Icon name="Shield" size={20} className="text-success" />
+                <span className="text-xs text-muted-foreground">
+                  Secured payment processed via Razorpay gateway. Encrypted with 256-bit SSL.
+                </span>
               </div>
             </div>
 
@@ -449,12 +528,12 @@ const SubscriptionManagement = () => {
                 Cancel
               </Button>
               <Button
-                onClick={() => handleProcessUpgrade({ paymentMethod: 'Visa •••• 4242' })}
+                onClick={handleProcessUpgrade}
                 loading={isProcessing}
                 className="flex-1"
                 iconName="CreditCard"
               >
-                Subscribe
+                Pay with Razorpay
               </Button>
             </div>
           </div>
@@ -491,30 +570,37 @@ const SubscriptionManagement = () => {
           {/* Tab Navigation */}
           <div className="mb-8">
             <nav className="flex space-x-1 bg-muted/30 rounded-lg p-1">
-              {tabs?.map((tab) => (
+              {tabs.map((tab) => (
                 <button
-                  key={tab?.id}
-                  onClick={() => setActiveTab(tab?.id)}
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
                   className={`
                     flex items-center space-x-2 px-4 py-3 rounded-lg text-sm font-medium transition-smooth
                     flex-1 justify-center focus-ring
-                    ${activeTab === tab?.id
+                    ${activeTab === tab.id
                       ? 'bg-card text-foreground border border-border shadow-sm'
                       : 'text-muted-foreground hover:text-foreground hover:bg-muted/50'
                     }
                   `}
                 >
-                  <Icon name={tab?.icon} size={16} />
-                  <span>{tab?.name}</span>
+                  <Icon name={tab.icon} size={16} />
+                  <span>{tab.name}</span>
                 </button>
               ))}
             </nav>
           </div>
 
           {/* Tab Content */}
-          <div>
-            {renderTabContent()}
-          </div>
+          {isLoading ? (
+            <div className="flex flex-col items-center justify-center py-12 space-y-4">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
+              <p className="text-muted-foreground text-sm">Loading subscription details...</p>
+            </div>
+          ) : (
+            <div>
+              {renderTabContent()}
+            </div>
+          )}
         </div>
       </div>
 

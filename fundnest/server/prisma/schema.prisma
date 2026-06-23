@@ -1,12 +1,8 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-  // Using default output to node_modules/@prisma/client
 }
 
 datasource db {
@@ -16,41 +12,49 @@ datasource db {
 
 // User model
 model User {
-  id            Int      @id @default(autoincrement())
-  email         String   @unique
-  password_hash String
-  first_name    String
-  last_name     String
-  role          String   // 'startup' or 'investor'
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
+  id                  Int            @id @default(autoincrement())
+  email               String         @unique
+  password_hash       String
+  first_name          String
+  last_name           String
+  role                String         // 'startup', 'investor', or 'admin'
+  is_active           Boolean        @default(true)
+  subscription_plan   String         @default("free") // 'free', 'pro', 'enterprise'
+  subscription_status String         @default("active") // 'active', 'cancelled', 'past_due'
+  reset_token         String?
+  reset_token_expiry  DateTime?
+  created_at          DateTime       @default(now())
+  updated_at          DateTime       @updatedAt
   
   // Relations
-  startup       Startup?
-  investor      Investor?
+  startup        Startup?
+  investor       Investor?
+  subscriptions  Subscription[]
+  payments       Payment[]
   
   @@map("users")
 }
 
 // Startup model
 model Startup {
-  id                 Int      @id @default(autoincrement())
-  user_id            Int      @unique
-  company_name       String
+  id                  Int      @id @default(autoincrement())
+  user_id             Int      @unique
+  company_name        String
   company_description String?
-  industry           String
-  funding_stage      String
+  industry            String
+  funding_stage       String
   funding_amount_range String
-  funding_amount_min Int
-  funding_amount_max Int
-  founded_year       Int
-  team_size          Int
-  created_at         DateTime @default(now())
-  updated_at         DateTime @updatedAt
+  funding_amount_min  Int
+  funding_amount_max  Int
+  founded_year        Int
+  team_size           Int
+  pitch_deck_url      String?
+  website_url         String?
+  created_at          DateTime @default(now())
+  updated_at          DateTime @updatedAt
   
   // Relations
-  user               User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  user                User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   
   @@map("startups")
 }
@@ -64,8 +68,8 @@ model Investor {
   check_size_min    Int
   check_size_max    Int
   experience_years  Int
-  preferred_sectors Json     // JSON array of sectors
-  preferred_stages  Json     // JSON array of stages
+  preferred_sectors String[]
+  preferred_stages  String[]
   created_at        DateTime @default(now())
   updated_at        DateTime @updatedAt
   
@@ -73,4 +77,50 @@ model Investor {
   user              User     @relation(fields: [user_id], references: [id], onDelete: Cascade)
   
   @@map("investors")
+}
+
+// Subscription model - tracks user subscription lifecycle
+model Subscription {
+  id                  Int       @id @default(autoincrement())
+  user_id             Int
+  plan                String    // 'free', 'pro', 'enterprise'
+  status              String    @default("active") // 'active', 'cancelled', 'past_due', 'expired'
+  billing_cycle       String    @default("monthly") // 'monthly', 'yearly'
+  amount              Int       // amount in paisa (INR)
+  currency            String    @default("INR")
+  razorpay_order_id   String?
+  razorpay_payment_id String?
+  razorpay_signature  String?
+  starts_at           DateTime  @default(now())
+  expires_at          DateTime?
+  cancelled_at        DateTime?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  
+  // Relations
+  user                User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@map("subscriptions")
+}
+
+// Payment model - tracks individual payment transactions
+model Payment {
+  id                  Int       @id @default(autoincrement())
+  user_id             Int
+  amount              Int       // amount in paisa (INR)
+  currency            String    @default("INR")
+  status              String    // 'created', 'captured', 'failed', 'refunded'
+  description         String?
+  razorpay_order_id   String?
+  razorpay_payment_id String?   @unique
+  razorpay_signature  String?
+  payment_method      String?   // 'card', 'upi', 'netbanking', 'wallet'
+  receipt             String?
+  created_at          DateTime  @default(now())
+  updated_at          DateTime  @updatedAt
+  
+  // Relations
+  user                User      @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  
+  @@map("payments")
 }

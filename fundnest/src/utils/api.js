@@ -213,6 +213,33 @@ export const statsAPI = {
     return response.data;
   }
 };
+// Subscription API calls
+export const subscriptionAPI = {
+  getPlans: async () => {
+    const response = await api.get('/subscriptions/plans');
+    return response.data;
+  },
+
+  getStatus: async () => {
+    const response = await api.get('/subscriptions/status');
+    return response.data;
+  },
+
+  createOrder: async (plan, billingCycle) => {
+    const response = await api.post('/subscriptions/create-order', { plan, billingCycle });
+    return response.data;
+  },
+
+  verifyPayment: async (paymentData) => {
+    const response = await api.post('/subscriptions/verify-payment', paymentData);
+    return response.data;
+  },
+
+  cancel: async () => {
+    const response = await api.post('/subscriptions/cancel');
+    return response.data;
+  }
+};
 
 // Utility function to handle API errors
 export const handleApiError = (error) => {

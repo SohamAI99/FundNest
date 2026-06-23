@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Helmet } from "react-helmet-async"; 
-import SEO, { seoConfigs } from '../../components/SEO';
 import analytics from '../../utils/analytics';
 import AppHeader from '../../components/ui/AppHeader';
 import HeroSection from './components/HeroSection';
+import HowItWorksSection from './components/HowItWorksSection';
 import BenefitsSection from './components/BenefitsSection';
-// TestimonialsSection removed as requested
+import PricingSection from './components/PricingSection';
+import TrustSection from './components/TrustSection';
+import TestimonialsSection from './components/TestimonialsSection';
 import NewsletterSection from './components/NewsletterSection';
 import DemoVideoModal from './components/DemoVideoModal';
 import Footer from './components/Footer';
@@ -29,18 +31,18 @@ const LandingPage = () => {
   return (
     <>
       <Helmet>
-        <title>FundNest - Connect Startups with Smart Investors</title>
+        <title>FundNest — Where Startups Meet Smart Capital | AI-Powered Funding Platform</title>
         <meta 
           name="description" 
-          content="FundNest uses AI-powered matching to connect promising startups with verified investors. Get funding faster with our intelligent ecosystem and real-time communication platform." 
+          content="FundNest connects promising startups with verified investors using AI-powered matching. Find funding, build partnerships, and scale your vision with India's leading startup-investor platform." 
         />
-        <meta name="keywords" content="startup funding, investors, AI matching, venture capital, angel investors, crowdfunding" />
-        <meta property="og:title" content="FundNest - Connect Startups with Smart Investors" />
+        <meta name="keywords" content="startup funding india, investors, AI matching, venture capital, angel investors, seed funding, series A, fundraising platform, startup ecosystem" />
+        <meta property="og:title" content="FundNest — Where Startups Meet Smart Capital" />
         <meta property="og:description" content="AI-powered platform connecting startups with investors through intelligent matching and real-time communication." />
         <meta property="og:type" content="website" />
         <meta property="og:url" content="https://fundnest.com" />
         <meta name="twitter:card" content="summary_large_image" />
-        <meta name="twitter:title" content="FundNest - Connect Startups with Smart Investors" />
+        <meta name="twitter:title" content="FundNest — Where Startups Meet Smart Capital" />
         <meta name="twitter:description" content="AI-powered platform connecting startups with investors through intelligent matching and real-time communication." />
         <link rel="canonical" href="https://fundnest.com" />
       </Helmet>
@@ -49,7 +51,11 @@ const LandingPage = () => {
         <AppHeader />
         <main className="pt-16">
           <HeroSection onWatchDemo={handleOpenDemoModal} />
+          <HowItWorksSection />
           <BenefitsSection />
+          <TrustSection />
+          <PricingSection />
+          <TestimonialsSection />
           <NewsletterSection />
         </main>
         <Footer />
